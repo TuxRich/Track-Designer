@@ -1,0 +1,11 @@
+{
+  "id": "whoop-hoop-50",
+  "name": "Whoop Hoop Gate 0.5m",
+  "shape": "circle",
+  "innerSize": 0.5,
+  "tubeWidth": 0.03,
+  "depth": 0.03,
+  "color": "#7cff00",
+  "defaultHeight": 0.25,
+  "stand": { "type": "legs", "color": "#333333" }
+}

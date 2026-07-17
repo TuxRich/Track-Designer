@@ -1,0 +1,11 @@
+{
+  "id": "whoop-hex-50",
+  "name": "Whoop Hex Gate 0.5m",
+  "shape": "hex",
+  "innerSize": 0.5,
+  "tubeWidth": 0.04,
+  "depth": 0.03,
+  "color": "#00c2ff",
+  "defaultHeight": 0,
+  "stand": { "type": "legs", "color": "#333333" }
+}

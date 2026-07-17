@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FPV Track Designer</title>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<header id="toolbar">
+  <span id="app-title">FPV Track Designer</span>
+  <input id="track-name" type="text" placeholder="Untitled track" spellcheck="false">
+  <button id="btn-new" title="Start a new empty track">New</button>
+  <button id="btn-save" title="Save track to server (Ctrl+S)">Save</button>
+  <button id="btn-load" title="Load a saved track">Load</button>
+  <span class="toolbar-sep"></span>
+  <button id="btn-measure" class="toggle" title="Measure distances (M). Click points, Esc to finish.">📏 Measure</button>
+  <button id="btn-clear-measure" title="Remove all measurements">Clear</button>
+  <button id="btn-show-measure" class="toggle active" title="Show or hide measurements">👁</button>
+  <span id="measure-total"></span>
+  <span class="toolbar-spacer"></span>
+  <label id="snap-label" title="Snap movement to 0.1 m and rotation to 15°">
+    <input id="chk-snap" type="checkbox" checked> Snap
+  </label>
+  <button id="btn-arena" title="Set the size of the design space">Arena…</button>
+  <button id="btn-screenshot" title="Download a PNG of the current view">📷 Screenshot</button>
+  <button id="btn-help" title="Keyboard shortcuts and help">?</button>
+</header>
+
+<div id="main">
+  <aside id="sidebar">
+    <h2>Gates</h2>
+    <div id="palette"></div>
+    <button id="btn-new-gate" title="Define a new gate type — it is saved to the gates folder on the server">＋ New gate type</button>
+
+    <div id="props" class="hidden">
+      <h2>Gate <span id="prop-number"></span> — <span id="prop-type"></span></h2>
+      <div class="prop-grid">
+        <label>X (m)</label><input id="prop-x" type="number" step="0.1">
+        <label>Y (m)</label><input id="prop-z" type="number" step="0.1">
+        <label>Height (m)</label><input id="prop-h" type="number" step="0.05" min="0">
+        <label>Rotation (°)</label><input id="prop-rot" type="number" step="15">
+      </div>
+      <div class="prop-actions">
+        <button id="prop-dup" title="Duplicate this gate (Ctrl+D)">Duplicate</button>
+        <button id="prop-del" class="danger" title="Delete this gate (Del)">Delete</button>
+      </div>
+      <p class="hint">G = move, R = rotate, Esc = deselect</p>
+    </div>
+
+    <div id="sidebar-footer">
+      <p class="hint">Click a gate type, then click the floor to place it. Click a placed gate to edit it.</p>
+    </div>
+  </aside>
+
+  <div id="viewport">
+    <canvas id="canvas3d"></canvas>
+    <div id="status-bar"><span id="status-mode">Orbit — drag to rotate, right-drag to pan, scroll to zoom</span></div>
+  </div>
+</div>
+
+<div id="modal-overlay" class="hidden">
+  <div id="dlg-arena" class="dialog hidden">
+    <h2>Arena size</h2>
+    <div class="prop-grid">
+      <label>Width (m)</label><input id="arena-w" type="number" min="1" max="200" step="0.5">
+      <label>Depth (m)</label><input id="arena-d" type="number" min="1" max="200" step="0.5">
+      <label>Height (m)</label><input id="arena-h" type="number" min="1" max="50" step="0.5">
+    </div>
+    <div class="dialog-actions">
+      <button id="arena-cancel">Cancel</button>
+      <button id="arena-apply" class="primary">Apply</button>
+    </div>
+  </div>
+
+  <div id="dlg-gate" class="dialog hidden">
+    <h2>New gate type</h2>
+    <div class="prop-grid">
+      <label>Name</label><input id="gate-name" type="text" placeholder="e.g. Square Gate 1m" spellcheck="false">
+      <label>Shape</label><select id="gate-shape"></select>
+      <label id="gate-inner-label">Opening (m)</label><input id="gate-inner" type="number" step="0.05" min="0.05">
+      <label id="gate-tube-label">Frame width (m)</label><input id="gate-tube" type="number" step="0.005" min="0.005">
+      <label id="gate-depth-label">Frame depth (m)</label><input id="gate-depth" type="number" step="0.005" min="0.005">
+      <label>Colour</label><input id="gate-color" type="color">
+      <label id="gate-height-label">Default height (m)</label><input id="gate-height" type="number" step="0.05" min="0">
+      <label id="gate-stand-label">Leg colour</label><input id="gate-stand-color" type="color">
+      <label>Preview</label><div id="gate-preview"></div>
+    </div>
+    <p class="hint">Opening is the usable gap (flat-to-flat for hex, diameter for hoops). Saved as
+      <code id="gate-file-hint"></code> on the server.</p>
+    <p id="gate-error" class="hint error"></p>
+    <div class="dialog-actions">
+      <button id="gate-cancel">Cancel</button>
+      <button id="gate-create" class="primary">Create gate</button>
+    </div>
+  </div>
+
+  <div id="dlg-load" class="dialog hidden">
+    <h2>Load track</h2>
+    <div id="track-list"></div>
+    <div class="dialog-actions">
+      <button id="load-cancel">Close</button>
+    </div>
+  </div>
+
+  <div id="dlg-help" class="dialog hidden">
+    <h2>Help</h2>
+    <table id="help-table">
+      <tr><td>Left-drag</td><td>Orbit camera</td></tr>
+      <tr><td>Right-drag</td><td>Pan camera</td></tr>
+      <tr><td>Scroll</td><td>Zoom</td></tr>
+      <tr><td>Click gate</td><td>Select</td></tr>
+      <tr><td><kbd>G</kbd></td><td>Move selected gate</td></tr>
+      <tr><td><kbd>R</kbd></td><td>Rotate selected gate</td></tr>
+      <tr><td><kbd>Ctrl+D</kbd></td><td>Duplicate selected gate</td></tr>
+      <tr><td><kbd>Del</kbd></td><td>Delete selected gate</td></tr>
+      <tr><td><kbd>M</kbd></td><td>Toggle measure mode</td></tr>
+      <tr><td>Click a 📍 point</td><td>Select a measurement point — drag to move it, <kbd>Del</kbd> to remove it</td></tr>
+      <tr><td>👁</td><td>Show / hide all measurements</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Finish measuring / cancel placement / deselect</td></tr>
+      <tr><td><kbd>Ctrl+S</kbd></td><td>Save track</td></tr>
+    </table>
+    <p class="hint">Measurements snap to gate centres — click near a gate to measure from its centre. Coordinates are metres from the arena corner.</p>
+    <div class="dialog-actions">
+      <button id="help-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

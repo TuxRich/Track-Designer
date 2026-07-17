@@ -1,0 +1,11 @@
+{
+  "id": "square-75",
+  "name": "Square Gate 0.75m",
+  "shape": "square",
+  "innerSize": 0.75,
+  "tubeWidth": 0.05,
+  "depth": 0.04,
+  "color": "#ffd400",
+  "defaultHeight": 0,
+  "stand": { "type": "legs", "color": "#333333" }
+}

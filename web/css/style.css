@@ -1,0 +1,280 @@
+:root {
+  --bg: #14161b;
+  --panel: #1d2027;
+  --panel-2: #252932;
+  --border: #343a46;
+  --text: #d7dce5;
+  --text-dim: #8b93a1;
+  --accent: #ff6a00;
+  --accent-2: #00c2ff;
+  --danger: #e5484d;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- toolbar ---------- */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  height: 46px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+#app-title {
+  font-weight: 600;
+  color: var(--accent);
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+#track-name {
+  width: 200px;
+  min-width: 110px;
+  flex-shrink: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.toolbar-spacer { flex: 1; }
+
+#measure-total {
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+  min-width: 90px;
+}
+
+#snap-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+button {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover { background: #2e3440; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { filter: brightness(1.1); }
+button.danger { color: var(--danger); border-color: var(--danger); }
+button.danger:hover { background: rgba(229, 72, 77, 0.15); }
+button.toggle.active { background: var(--accent-2); border-color: var(--accent-2); color: #06232e; }
+
+/* ---------- layout ---------- */
+#main {
+  display: flex;
+  height: calc(100% - 46px);
+}
+
+#sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+#sidebar h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+}
+
+#viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+#canvas3d {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#status-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 10px;
+  background: rgba(20, 22, 27, 0.75);
+  color: var(--text-dim);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* ---------- palette ---------- */
+#palette {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.palette-item:hover { border-color: var(--text-dim); }
+.palette-item.active { border-color: var(--accent); background: rgba(255, 106, 0, 0.1); }
+.palette-item canvas { flex: none; }
+.palette-item .palette-name { font-size: 13px; }
+
+/* ---------- properties ---------- */
+#props {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.prop-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  align-items: center;
+}
+.prop-grid label { color: var(--text-dim); font-size: 12px; }
+.prop-grid input,
+.prop-grid select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.prop-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.prop-actions button { flex: 1; }
+
+.hint { color: var(--text-dim); font-size: 12px; margin: 8px 0 0; }
+.hint.error { color: var(--danger); }
+.hint.error:empty { display: none; }
+
+.prop-grid input[type="color"] {
+  padding: 2px;
+  height: 28px;
+  cursor: pointer;
+}
+
+#gate-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px;
+  display: flex;
+  justify-content: center;
+}
+
+#btn-new-gate { width: 100%; }
+
+#sidebar-footer { margin-top: auto; }
+
+/* ---------- dialogs ---------- */
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 320px;
+  max-width: 460px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.dialog h2 { margin: 0 0 12px; font-size: 16px; }
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#track-list { display: flex; flex-direction: column; gap: 6px; min-width: 360px; }
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.track-row .track-title { flex: 1; cursor: pointer; }
+.track-row .track-title:hover { color: var(--accent-2); }
+.track-row .track-date { color: var(--text-dim); font-size: 12px; }
+.track-row button { padding: 2px 8px; }
+#track-list .empty { color: var(--text-dim); padding: 12px; text-align: center; }
+
+#help-table { border-collapse: collapse; }
+#help-table td { padding: 3px 12px 3px 0; }
+#help-table td:first-child { color: var(--text-dim); }
+kbd {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 12px;
+}

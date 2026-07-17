@@ -1,0 +1,14 @@
+{
+  "id": "big-hoop-1m",
+  "name": "Big Hoop 1m",
+  "shape": "circle",
+  "innerSize": 1,
+  "tubeWidth": 0.05,
+  "depth": 0.03,
+  "color": "#e040fb",
+  "defaultHeight": 0.5,
+  "stand": {
+    "type": "legs",
+    "color": "#333333"
+  }
+}
