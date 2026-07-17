@@ -24,6 +24,8 @@
   <button id="btn-measure" class="toggle" title="Measure distances (M). Click points, Esc to finish.">📏 Measure</button>
   <button id="btn-clear-measure" title="Remove all measurements">Clear</button>
   <button id="btn-show-measure" class="toggle active" title="Show or hide measurements">👁</button>
+  <span class="toolbar-sep"></span>
+  <button id="btn-show-arrows" class="toggle active" title="Show or hide flight direction arrows">➤</button>
   <span id="measure-total"></span>
   <span class="toolbar-spacer"></span>
   <label id="snap-label" title="Snap movement to 0.1 m and rotation to 15°">
@@ -47,6 +49,9 @@
         <label>Y (m)</label><input id="prop-z" type="number" step="0.1">
         <label>Height (m)</label><input id="prop-h" type="number" step="0.05" min="0">
         <label>Rotation (°)</label><input id="prop-rot" type="number" step="15">
+        <label id="prop-reverse-label">Direction</label><button id="prop-reverse" title="Flip which way to fly through this gate">⇄ Reverse</button>
+        <label id="prop-dir-in-label">In through</label><select id="prop-dir-in" title="Which face to enter the cube through"></select>
+        <label id="prop-dir-out-label">Out through</label><select id="prop-dir-out" title="Which face to exit the cube through"></select>
       </div>
       <div class="prop-actions">
         <button id="prop-dup" title="Duplicate this gate (Ctrl+D)">Duplicate</button>
@@ -124,6 +129,7 @@
       <tr><td><kbd>M</kbd></td><td>Toggle measure mode</td></tr>
       <tr><td>Click a 📍 point</td><td>Select a measurement point — drag to move it, <kbd>Del</kbd> to remove it</td></tr>
       <tr><td>👁</td><td>Show / hide all measurements</td></tr>
+      <tr><td>➤</td><td>Show / hide flight direction arrows. Set a gate's direction in its panel — ⇄ Reverse for flat gates; cubes have "In through" / "Out through" faces and show two arrows when the route bends (e.g. in the top, out the front)</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>Finish measuring / cancel placement / deselect</td></tr>
       <tr><td><kbd>Ctrl+S</kbd></td><td>Save track</td></tr>
     </table>

@@ -1,0 +1,11 @@
+{
+  "id": "whoop-cube-50",
+  "name": "Whoop Cube Gate 0.5m",
+  "shape": "cube",
+  "innerSize": 0.5,
+  "tubeWidth": 0.03,
+  "depth": 0.03,
+  "color": "#b26bff",
+  "defaultHeight": 0,
+  "stand": { "type": "legs", "color": "#333333" }
+}

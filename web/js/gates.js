@@ -84,6 +84,43 @@ export const shapeBuilders = {
     return g;
   },
 
+  // A wireframe cube you can fly through along any axis. innerSize is the
+  // opening (inner edge length), tubeWidth the frame member thickness.
+  cube(def) {
+    const g = new THREE.Group();
+    const mat = frameMaterial(def);
+    const inner = def.innerSize;
+    const tube = def.tubeWidth;
+    const outer = inner + 2 * tube;
+    const off = (inner + tube) / 2;
+    const yBot = tube / 2;
+    const yTop = inner + 1.5 * tube;
+    const yMid = tube + inner / 2;
+
+    const beamX = new THREE.BoxGeometry(outer, tube, tube); // full-width, covers corners
+    const beamZ = new THREE.BoxGeometry(tube, tube, inner);
+    const beamY = new THREE.BoxGeometry(tube, inner, tube);
+    const add = (geo, x, y, z) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      g.add(m);
+    };
+    for (const z of [-off, off]) {
+      add(beamX, 0, yBot, z);
+      add(beamX, 0, yTop, z);
+    }
+    for (const x of [-off, off]) {
+      add(beamZ, x, yBot, 0);
+      add(beamZ, x, yTop, 0);
+      for (const z of [-off, off]) add(beamY, x, yMid, z);
+    }
+    g.userData.frameHeight = outer;
+    // A cube can be flown through on any of its three axes, so the editor
+    // offers all six directions instead of just forward/back.
+    g.userData.multiDirectional = true;
+    return g;
+  },
+
   // A vertical turn-marker pole. innerSize is the pole height and tubeWidth
   // its diameter — there is no opening to fly through.
   pole(def) {
@@ -102,6 +139,8 @@ export const shapeBuilders = {
     g.userData.frameHeight = h;
     // A tall thin pick strip instead of the default square fill.
     g.userData.pickSize = { w: Math.max(0.15, r * 8), h };
+    // You fly around a pole, not through it — no direction arrow.
+    g.userData.directional = false;
     return g;
   },
 };
@@ -126,7 +165,125 @@ export const shapeFieldMeta = {
     showLegs: false,
     defaults: { inner: 1.5, tube: 0.03 },
   },
+  cube: {
+    inner: 'Opening (m)',
+    tube: 'Frame width (m)',
+    showDepth: false, // a cube is as deep as it is wide
+    showHeight: true,
+    showLegs: true,
+    defaults: { inner: 0.5, tube: 0.03 },
+  },
 };
+
+// ---------- fly-through directions ----------
+//
+// Planar gates have a single arrow along ±Z ('forward' / 'back').
+// Multidirectional shapes (cube) use an "in>out" face pair, e.g.
+// "top>front" — enter through the top, exit through the front. When the
+// faces are opposite it renders as one straight arrow; otherwise as two
+// arrows meeting at the cube's center (entry in, exit out).
+
+const FACE_NORMALS = {
+  front: [0, 0, -1],
+  back: [0, 0, 1],
+  left: [-1, 0, 0],
+  right: [1, 0, 0],
+  top: [0, 1, 0],
+  bottom: [0, -1, 0],
+};
+
+export const CUBE_FACES = {
+  front: 'Front',
+  back: 'Back',
+  left: 'Left',
+  right: 'Right',
+  top: 'Top',
+  bottom: 'Bottom',
+};
+
+export const OPPOSITE_FACE = {
+  front: 'back',
+  back: 'front',
+  left: 'right',
+  right: 'left',
+  top: 'bottom',
+  bottom: 'top',
+};
+
+// Tracks saved by earlier versions used single keywords for cube directions.
+const LEGACY_CUBE_DIRS = {
+  forward: 'front>back',
+  back: 'back>front',
+  right: 'left>right',
+  left: 'right>left',
+  down: 'top>bottom',
+  up: 'bottom>top',
+};
+
+export function normalizeCubeDir(dir) {
+  if (dir?.includes('>')) return dir;
+  return LEGACY_CUBE_DIRS[dir] || 'front>back';
+}
+
+// One arrow mesh from `from` to `to` (local coordinates of the arrow group).
+function arrowSegment(from, to) {
+  const dirV = to.clone().sub(from);
+  const len = dirV.length();
+  const coneLen = Math.min(0.14, len * 0.35);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9 });
+  const g = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, len - coneLen, 8), mat);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = (len - coneLen) / 2;
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.05, coneLen, 12), mat);
+  cone.rotation.x = Math.PI / 2;
+  cone.position.z = len - coneLen / 2;
+  g.add(shaft, cone);
+  g.traverse((o) => {
+    if (o.isMesh) o.userData.noShadow = true;
+  });
+  g.position.copy(from);
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dirV.normalize());
+  return g;
+}
+
+// (Re)builds the arrow meshes inside the gate's 'arrow' container for the
+// given direction value.
+export function applyArrowDirection(gate, dir) {
+  const frame = gate.getObjectByName('frame');
+  const arrow = frame?.getObjectByName('arrow');
+  if (!arrow) return;
+  for (let i = arrow.children.length - 1; i >= 0; i--) {
+    const c = arrow.children[i];
+    arrow.remove(c);
+    c.traverse((o) => {
+      o.geometry?.dispose();
+      o.material?.dispose();
+    });
+  }
+  arrow.rotation.set(0, 0, 0);
+  const def = gate.userData.def;
+
+  if (frame.userData.multiDirectional) {
+    const [inFace, outFace] = normalizeCubeDir(dir).split('>');
+    const nIn = new THREE.Vector3(...(FACE_NORMALS[inFace] || FACE_NORMALS.front));
+    const nOut = new THREE.Vector3(...(FACE_NORMALS[outFace] || FACE_NORMALS.back));
+    const reach = frame.userData.frameHeight / 2 + 0.12;
+    const entry = nIn.clone().multiplyScalar(reach);
+    const exit = nOut.clone().multiplyScalar(reach);
+    if (OPPOSITE_FACE[inFace] === outFace) {
+      arrow.add(arrowSegment(entry, exit)); // straight through — one arrow
+    } else {
+      const center = new THREE.Vector3();
+      arrow.add(arrowSegment(entry, center), arrowSegment(center, exit));
+    }
+  } else {
+    const len = Math.max(0.4, def.innerSize * 0.9);
+    const half = new THREE.Vector3(0, 0, len / 2);
+    arrow.add(arrowSegment(half.clone().negate(), half));
+    arrow.rotation.y = dir === 'back' ? Math.PI : 0;
+  }
+}
 
 // 2D palette icons, one per shape family. Falls back to a filled dot.
 export const thumbnailDrawers = {
@@ -157,6 +314,22 @@ export const thumbnailDrawers = {
     ctx.lineTo(s / 2, s - 4);
     ctx.moveTo(s / 2 - 7, s - 4);
     ctx.lineTo(s / 2 + 7, s - 4);
+    ctx.stroke();
+  },
+  cube(ctx, s, lw) {
+    ctx.lineWidth = Math.max(2, lw * 0.6);
+    const o = Math.round(s * 0.22); // depth offset of the back face
+    const m = ctx.lineWidth;
+    const size = s - o - 2 * m;
+    const fx = m;
+    const fy = m + o;
+    ctx.strokeRect(fx + o, m, size, size); // back face
+    ctx.strokeRect(fx, fy, size, size); // front face
+    ctx.beginPath();
+    for (const [cx, cy] of [[fx, fy], [fx + size, fy], [fx, fy + size], [fx + size, fy + size]]) {
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + o, cy - o);
+    }
     ctx.stroke();
   },
 };
@@ -204,15 +377,25 @@ export function buildGate(def, { ghost = false } = {}) {
   pick.position.y = frame.userData.frameHeight / 2;
   frame.add(pick);
 
+  // Flight-direction arrow container, filled by applyArrowDirection. Lives
+  // inside the frame group so it follows the gate's height and rotation.
+  if (frame.userData.directional !== false) {
+    const arrow = new THREE.Group();
+    arrow.name = 'arrow';
+    arrow.position.y = frame.userData.frameHeight / 2;
+    frame.add(arrow);
+  }
+
   const legs = new THREE.Group();
   legs.name = 'legs';
   gate.add(legs);
 
   gate.userData.isGate = true;
   gate.userData.def = def;
+  applyArrowDirection(gate, 'forward');
 
   gate.traverse((o) => {
-    if (o.isMesh && o.name !== 'pickFill') {
+    if (o.isMesh && o.name !== 'pickFill' && !o.userData.noShadow) {
       o.castShadow = !ghost;
       if (ghost) {
         o.material = o.material.clone();

@@ -40,6 +40,14 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   Click any measurement point to edit it: drag the gizmo to move it (labels
   update live), `Del` removes it. The 👁 button hides/shows all measurements,
   e.g. for a clean screenshot.
+- **Direction arrows** — every gate shows a yellow arrow for the direction to
+  fly through it (poles excluded). ⇄ Reverse in the gate's panel flips it;
+  cube gates instead get **In through** / **Out through** face choices
+  (front/back/left/right/top/bottom). Opposite faces draw one straight arrow;
+  any other combination draws two arrows meeting in the cube's center — e.g.
+  in the top, out the front. The same cube type can be used differently at
+  different points in a track. The ➤ toolbar button hides/shows all arrows,
+  and each gate's route saves with the track.
 - **Arena** — set the width/depth/height of your space. The grid has 0.5 m
   minor and 1 m major lines with meter numbers along two edges; coordinates
   are meters from the arena corner.
@@ -68,7 +76,7 @@ Or drop a JSON file in `gates/` yourself and restart the server:
 }
 ```
 
-- `shape` — `square`, `hex`, `circle`, or `pole`. New shape families are added
+- `shape` — `square`, `hex`, `circle`, `cube`, or `pole`. New shape families are added
   in `web/js/gates.js` (`shapeBuilders` registry, one function per shape, plus
   optional form labels in `shapeFieldMeta`).
 - `innerSize` — the opening, meters (flat-to-flat for hex, diameter for

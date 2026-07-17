@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TransformControls } from '../vendor/TransformControls.js';
-import { buildGate, setGateHeight, gateTop } from './gates.js';
+import { buildGate, setGateHeight, gateTop, applyArrowDirection, normalizeCubeDir } from './gates.js';
 import { makeTextSprite } from './scene.js';
 
 const SNAP_MOVE = 0.1; // meters
@@ -13,11 +13,12 @@ export class Editor {
   constructor(sceneMgr, state) {
     this.sceneMgr = sceneMgr;
     this.state = state; // shared { mode } object
-    this.gates = []; // [{ typeId, def, object, rotY }] — height lives in object.userData
+    this.gates = []; // [{ typeId, def, object, rotY, dir }] — height lives in object.userData
     this.selected = null;
     this.placingDef = null;
     this.ghost = null;
     this.nextNumber = 1;
+    this.showArrows = true;
 
     // Hooks assigned by the UI layer.
     this.onSelectionChanged = () => {};
@@ -70,6 +71,8 @@ export class Editor {
     this.state.mode = 'place';
     this.ghost = buildGate(def, { ghost: true });
     this.ghost.visible = false;
+    const ghostArrow = this.ghost.getObjectByName('arrow');
+    if (ghostArrow) ghostArrow.visible = this.showArrows;
     this.group.add(this.ghost);
   }
 
@@ -132,18 +135,42 @@ export class Editor {
 
   // ---------- gate lifecycle ----------
 
-  placeGate(def, x, z, { height = def.defaultHeight || 0, rotY = 0, select = false } = {}) {
+  placeGate(def, x, z, { height = def.defaultHeight || 0, rotY = 0, dir = 'forward', select = false } = {}) {
     const object = buildGate(def);
     object.position.set(x, 0, z);
     object.rotation.y = rotY;
     setGateHeight(object, height);
     this.group.add(object);
-    const entry = { typeId: def.id, def, object, rotY };
+    const entry = { typeId: def.id, def, object, rotY, dir: 'forward' };
     this.gates.push(entry);
+    this._applyDir(entry, dir);
+    this._applyArrowVisibility(entry);
     this._renumber();
     this.onGatesChanged();
     if (select) this.selectGate(object);
     return entry;
+  }
+
+  _arrowOf(entry) {
+    return entry.object.getObjectByName('arrow');
+  }
+
+  _applyDir(entry, dir) {
+    const multi = entry.object.getObjectByName('frame')?.userData.multiDirectional;
+    entry.dir = multi ? normalizeCubeDir(dir) : dir === 'back' ? 'back' : 'forward';
+    applyArrowDirection(entry.object, entry.dir);
+  }
+
+  _applyArrowVisibility(entry) {
+    const arrow = this._arrowOf(entry);
+    if (arrow) arrow.visible = this.showArrows;
+  }
+
+  setArrowsVisible(v) {
+    this.showArrows = v;
+    for (const entry of this.gates) this._applyArrowVisibility(entry);
+    const ghostArrow = this.ghost?.getObjectByName('arrow');
+    if (ghostArrow) ghostArrow.visible = v;
   }
 
   deleteSelected() {
@@ -162,6 +189,7 @@ export class Editor {
     const entry = this.placeGate(s.def, s.object.position.x + 0.6, s.object.position.z, {
       height: s.object.userData.height,
       rotY: s.object.rotation.y,
+      dir: s.dir,
     });
     this.selectGate(entry.object);
   }
@@ -272,7 +300,7 @@ export class Editor {
   }
 
   // Numeric edits from the properties panel.
-  applyProps(entry, { x, z, height, rotDeg }) {
+  applyProps(entry, { x, z, height, rotDeg, dir }) {
     const o = entry.object;
     if (Number.isFinite(x)) o.position.x = THREE.MathUtils.clamp(x, 0, this.sceneMgr.arena.w);
     if (Number.isFinite(z)) o.position.z = THREE.MathUtils.clamp(z, 0, this.sceneMgr.arena.d);
@@ -282,6 +310,7 @@ export class Editor {
       if (label) label.position.y = gateTop(o) + 0.22;
     }
     if (Number.isFinite(rotDeg)) o.rotation.y = THREE.MathUtils.degToRad(rotDeg);
+    if (dir !== undefined) this._applyDir(entry, dir);
     this._syncEntry(entry);
     this.onGatesChanged();
   }
@@ -295,6 +324,7 @@ export class Editor {
       z: round3(g.object.position.z),
       height: round3(g.object.userData.height || 0),
       rotY: round3(g.object.rotation.y),
+      dir: g.dir || 'forward',
     }));
   }
 
@@ -306,7 +336,12 @@ export class Editor {
         console.warn(`Track references unknown gate type "${g.typeId}" — skipped`);
         continue;
       }
-      this.placeGate(def, g.x, g.z, { height: g.height, rotY: g.rotY });
+      // Older tracks saved a boolean `reversed` instead of `dir`.
+      this.placeGate(def, g.x, g.z, {
+        height: g.height,
+        rotY: g.rotY,
+        dir: g.dir || (g.reversed ? 'back' : 'forward'),
+      });
     }
   }
 }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeThumbnail, shapeBuilders, shapeFieldMeta } from './gates.js';
+import { makeThumbnail, shapeBuilders, shapeFieldMeta, CUBE_FACES, OPPOSITE_FACE, normalizeCubeDir } from './gates.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,6 +25,10 @@ export class UI {
     };
     $('btn-show-measure').addEventListener('click', () => {
       this.setMeasureVisible(!this.measure.visible);
+    });
+    $('btn-show-arrows').addEventListener('click', () => {
+      this.editor.setArrowsVisible(!this.editor.showArrows);
+      $('btn-show-arrows').classList.toggle('active', this.editor.showArrows);
     });
   }
 
@@ -107,6 +111,32 @@ export class UI {
     }
     $('prop-del').addEventListener('click', () => this.editor.deleteSelected());
     $('prop-dup').addEventListener('click', () => this.editor.duplicateSelected());
+    $('prop-reverse').addEventListener('click', () => {
+      const entry = this.editor.selected;
+      if (entry) this.editor.applyProps(entry, { dir: entry.dir === 'back' ? 'forward' : 'back' });
+    });
+    for (const sel of [$('prop-dir-in'), $('prop-dir-out')]) {
+      for (const [value, label] of Object.entries(CUBE_FACES)) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        sel.appendChild(opt);
+      }
+    }
+    const updateCubeDir = (changed) => {
+      const entry = this.editor.selected;
+      if (!entry || this._fillingProps) return;
+      const inSel = $('prop-dir-in');
+      const outSel = $('prop-dir-out');
+      // Entering and exiting the same face isn't a route — flip the other one.
+      if (inSel.value === outSel.value) {
+        if (changed === 'in') outSel.value = OPPOSITE_FACE[inSel.value];
+        else inSel.value = OPPOSITE_FACE[outSel.value];
+      }
+      this.editor.applyProps(entry, { dir: `${inSel.value}>${outSel.value}` });
+    };
+    $('prop-dir-in').addEventListener('change', () => updateCubeDir('in'));
+    $('prop-dir-out').addEventListener('change', () => updateCubeDir('out'));
   }
 
   _showProps(entry) {
@@ -123,6 +153,20 @@ export class UI {
     $('prop-z').value = entry.object.position.z.toFixed(2);
     $('prop-h').value = (entry.object.userData.height || 0).toFixed(2);
     $('prop-rot').value = Math.round(THREE.MathUtils.radToDeg(entry.object.rotation.y));
+    // Poles have no fly-through direction. Planar gates get ⇄ Reverse;
+    // multidirectional shapes (cube) get the full six-way dropdown.
+    const hasArrow = !!entry.object.getObjectByName('arrow');
+    const multi = !!entry.object.getObjectByName('frame')?.userData.multiDirectional;
+    $('prop-reverse-label').classList.toggle('hidden', !hasArrow || multi);
+    $('prop-reverse').classList.toggle('hidden', !hasArrow || multi);
+    for (const id of ['prop-dir-in-label', 'prop-dir-in', 'prop-dir-out-label', 'prop-dir-out']) {
+      $(id).classList.toggle('hidden', !hasArrow || !multi);
+    }
+    if (multi) {
+      const [inFace, outFace] = normalizeCubeDir(entry.dir).split('>');
+      $('prop-dir-in').value = inFace;
+      $('prop-dir-out').value = outFace;
+    }
     this._fillingProps = false;
   }
 
