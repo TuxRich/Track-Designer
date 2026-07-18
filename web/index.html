@@ -42,9 +42,23 @@
     <div id="palette"></div>
     <button id="btn-new-gate" title="Define a new gate type — it is saved to the gates folder on the server">＋ New gate type</button>
 
+    <div id="sidebar-footer">
+      <p class="hint">Click a gate type, then click the floor to place it. Click a placed gate to edit it.</p>
+    </div>
+  </aside>
+
+  <div id="viewport">
+    <canvas id="canvas3d"></canvas>
+
     <div id="props" class="hidden">
       <h2>Gate <span id="prop-number"></span> — <span id="prop-type"></span></h2>
       <div class="prop-grid">
+        <label>Order</label>
+        <div id="prop-order-row">
+          <button id="prop-order-down" title="Move this gate earlier in the track order">−</button>
+          <input id="prop-order" type="number" min="1" step="1" title="This gate's position in the track order">
+          <button id="prop-order-up" title="Move this gate later in the track order">+</button>
+        </div>
         <label>X (m)</label><input id="prop-x" type="number" step="0.1">
         <label>Y (m)</label><input id="prop-z" type="number" step="0.1">
         <label>Height (m)</label><input id="prop-h" type="number" step="0.05" min="0">
@@ -60,13 +74,6 @@
       <p class="hint">G = move, R = rotate, Esc = deselect</p>
     </div>
 
-    <div id="sidebar-footer">
-      <p class="hint">Click a gate type, then click the floor to place it. Click a placed gate to edit it.</p>
-    </div>
-  </aside>
-
-  <div id="viewport">
-    <canvas id="canvas3d"></canvas>
     <div id="status-bar"><span id="status-mode">Orbit — drag to rotate, right-drag to pan, scroll to zoom</span></div>
   </div>
 </div>
@@ -133,7 +140,7 @@
       <tr><td><kbd>Esc</kbd></td><td>Finish measuring / cancel placement / deselect</td></tr>
       <tr><td><kbd>Ctrl+S</kbd></td><td>Save track</td></tr>
     </table>
-    <p class="hint">Measurements snap to gate centres — click near a gate to measure from its centre. Coordinates are metres from the arena corner.</p>
+    <p class="hint">Measurement clicks on a gate snap to its spot on the floor — the distance you'd tape out when building the track. Shift-click a gate to measure from its opening centre instead. Coordinates are metres from the arena corner.</p>
     <div class="dialog-actions">
       <button id="help-close">Close</button>
     </div>

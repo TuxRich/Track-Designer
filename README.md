@@ -32,9 +32,13 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   Stay in placement mode to drop several; `Esc` to stop.
 - **Edit a gate** — click it (the middle of the opening works). Drag the gizmo
   to move, `G`/`R` to switch move/rotate, or type exact numbers in the
-  properties panel. `Ctrl+D` duplicates, `Del` deletes.
+  properties panel. `Ctrl+D` duplicates, `Del` deletes. Gates are numbered in
+  track order — use the Order −/+ control (or type a position) in the panel
+  to re-sequence them; everything renumbers automatically.
 - **Measure** — toggle 📏 Measure (or `M`), click points; clicking a gate snaps
-  to its opening centre. Each segment is labelled in meters and the running
+  to its spot on the floor, so the numbers match a tape measure laid on the
+  ground (Shift-click a gate for a 3D distance from its opening centre
+  instead). Each segment is labelled in meters and the running
   total shows in the toolbar. `Esc` finishes a run; measurements stay visible
   (they save with the track and appear in screenshots) until you hit Clear.
   Click any measurement point to edit it: drag the gizmo to move it (labels

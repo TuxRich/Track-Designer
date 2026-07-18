@@ -194,6 +194,20 @@ export class Editor {
     this.selectGate(entry.object);
   }
 
+  // Move a gate to position `newNumber` (1-based) in the track order; the
+  // other gates shift and everything renumbers.
+  reorderGate(entry, newNumber) {
+    const idx = this.gates.indexOf(entry);
+    if (idx < 0 || !Number.isFinite(newNumber)) return;
+    const target = THREE.MathUtils.clamp(Math.round(newNumber) - 1, 0, this.gates.length - 1);
+    if (idx === target) return;
+    this.gates.splice(idx, 1);
+    this.gates.splice(target, 0, entry);
+    this._renumber();
+    this.onGatesChanged();
+    if (this.selected === entry) this.onSelectionChanged(entry); // refresh the panel
+  }
+
   clearAll() {
     this.deselect();
     this.cancelPlacement();

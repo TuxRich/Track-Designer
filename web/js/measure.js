@@ -94,11 +94,14 @@ export class MeasureTool {
     let point = null;
     const hit = this.sceneMgr.pickObjects(e, this.editor.gateObjects);
     if (hit) {
-      // Snap to the gate's opening center — that's the distance you
-      // replicate when building the track for real.
       let g = hit.object;
       while (g && !g.userData.isGate) g = g.parent;
-      if (g) point = gateCenter(g);
+      if (g) {
+        // Default to the gate's spot on the floor — that matches laying a
+        // tape measure on the ground when building the track for real.
+        // Shift-click snaps to the opening center for a true 3D distance.
+        point = e.shiftKey ? gateCenter(g) : g.getWorldPosition(new THREE.Vector3()).setY(0);
+      }
     }
     if (!point) point = this.sceneMgr.pickFloor(e);
     if (!point) return;
@@ -110,6 +113,9 @@ export class MeasureTool {
   addPoint(point) {
     if (!this.current) {
       this.current = { points: [], group: new THREE.Group(), markers: [], labels: [], line: null };
+      // Slight lift so floor-level lines don't z-fight with the floor plane.
+      // Only the visuals move — marker/point coordinates stay exact.
+      this.current.group.position.y = 0.01;
       this.root.add(this.current.group);
       this.chains.push(this.current);
     }

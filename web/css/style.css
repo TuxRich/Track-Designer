@@ -167,11 +167,28 @@ button.toggle.active { background: var(--accent-2); border-color: var(--accent-2
 .palette-item .palette-name { font-size: 13px; }
 
 /* ---------- properties ---------- */
+/* Floating gate properties panel over the right side of the viewport. */
 #props {
-  background: var(--panel-2);
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 232px;
+  max-height: calc(100% - 50px);
+  overflow-y: auto;
+  background: rgba(29, 32, 39, 0.92);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+#props h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0 0 8px;
 }
 
 .prop-grid {
@@ -190,6 +207,20 @@ button.toggle.active { background: var(--accent-2); border-color: var(--accent-2
   border-radius: 4px;
   padding: 4px 6px;
   font-variant-numeric: tabular-nums;
+}
+
+#prop-order-row {
+  display: flex;
+  gap: 4px;
+}
+#prop-order-row input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+#prop-order-row button {
+  padding: 4px 9px;
+  line-height: 1;
 }
 
 .prop-actions {

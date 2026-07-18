@@ -79,7 +79,7 @@ export class UI {
       if (!this.measure.visible) this.setMeasureVisible(true);
       this.state.mode = 'measure';
       $('btn-measure').classList.add('active');
-      this.setStatus('Measuring — click points (gates snap to their centre), Esc to finish a run');
+      this.setStatus('Measuring — click points (gates snap at floor level, Shift-click for opening centre), Esc to finish a run');
     } else {
       this.measure.finishChain();
       if (this.state.mode === 'measure') this.state.mode = 'select';
@@ -111,6 +111,18 @@ export class UI {
     }
     $('prop-del').addEventListener('click', () => this.editor.deleteSelected());
     $('prop-dup').addEventListener('click', () => this.editor.duplicateSelected());
+    $('prop-order').addEventListener('change', () => {
+      const entry = this.editor.selected;
+      if (entry && !this._fillingProps) this.editor.reorderGate(entry, parseInt($('prop-order').value, 10));
+    });
+    $('prop-order-down').addEventListener('click', () => {
+      const entry = this.editor.selected;
+      if (entry) this.editor.reorderGate(entry, entry.number - 1);
+    });
+    $('prop-order-up').addEventListener('click', () => {
+      const entry = this.editor.selected;
+      if (entry) this.editor.reorderGate(entry, entry.number + 1);
+    });
     $('prop-reverse').addEventListener('click', () => {
       const entry = this.editor.selected;
       if (entry) this.editor.applyProps(entry, { dir: entry.dir === 'back' ? 'forward' : 'back' });
@@ -149,6 +161,8 @@ export class UI {
     panel.classList.remove('hidden');
     $('prop-number').textContent = entry.number;
     $('prop-type').textContent = entry.def.name;
+    $('prop-order').value = entry.number;
+    $('prop-order').max = this.editor.gates.length;
     $('prop-x').value = entry.object.position.x.toFixed(2);
     $('prop-z').value = entry.object.position.z.toFixed(2);
     $('prop-h').value = (entry.object.userData.height || 0).toFixed(2);

@@ -1,0 +1,14 @@
+{
+  "id": "gemfan-cube-gate",
+  "name": "GEMFAN Cube Gate",
+  "shape": "cube",
+  "innerSize": 0.8,
+  "tubeWidth": 0.08,
+  "depth": 0.08,
+  "color": "#808080",
+  "defaultHeight": 0,
+  "stand": {
+    "type": "legs",
+    "color": "#333333"
+  }
+}
