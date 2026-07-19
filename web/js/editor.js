@@ -254,7 +254,9 @@ export class Editor {
     this.selected = entry;
     this._setEmissive(object, 0x553311);
     this.tc.attach(object);
-    this.tc.setMode('translate');
+    // Route through setTransformMode so the per-axis visibility flags from a
+    // previous rotate-mode selection are reset, not just the mode.
+    this.setTransformMode('translate');
     this.onSelectionChanged(entry);
   }
 
