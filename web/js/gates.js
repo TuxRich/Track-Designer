@@ -353,6 +353,37 @@ export function makeThumbnail(def, size = 34) {
   return canvas;
 }
 
+// Chequered start/finish line drawn on the floor under gate number 1. The
+// editor adds/removes it as the track order changes.
+export function makeStartLine(def) {
+  const cols = 14;
+  const rows = 3;
+  const cell = 16;
+  const canvas = document.createElement('canvas');
+  canvas.width = cols * cell;
+  canvas.height = rows * cell;
+  const ctx = canvas.getContext('2d');
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      ctx.fillStyle = (r + c) % 2 ? '#e8e8e8' : '#111111';
+      ctx.fillRect(c * cell, r * cell, cell, cell);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
+
+  const width = def.shape === 'pole' ? 0.6 : def.innerSize + 2 * (def.tubeWidth || 0) + 0.4;
+  const line = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, 0.24),
+    new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
+  );
+  line.name = 'startLine';
+  line.rotation.x = -Math.PI / 2;
+  line.position.y = 0.006; // just above the floor, below the grid lines' z-fight zone
+  return line;
+}
+
 // Builds the full placeable gate: a group whose origin sits on the floor.
 // The frame is lifted to `height` via setGateHeight, which also (re)builds
 // the stand legs connecting the frame to the floor.

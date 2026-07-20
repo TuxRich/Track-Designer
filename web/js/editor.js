@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import { TransformControls } from '../vendor/TransformControls.js';
-import { buildGate, setGateHeight, gateTop, applyArrowDirection, normalizeCubeDir } from './gates.js';
+import {
+  buildGate,
+  setGateHeight,
+  gateTop,
+  applyArrowDirection,
+  normalizeCubeDir,
+  makeStartLine,
+} from './gates.js';
 import { makeTextSprite } from './scene.js';
 
 const SNAP_MOVE = 0.1; // meters
@@ -236,6 +243,22 @@ export class Editor {
       label.name = 'numberLabel';
       label.position.y = gateTop(entry.object) + 0.22;
       entry.object.add(label);
+    });
+    this._updateStartMarker();
+  }
+
+  // The chequered start/finish line lives under whichever gate is number 1.
+  _updateStartMarker() {
+    this.gates.forEach((entry, i) => {
+      const existing = entry.object.getObjectByName('startLine');
+      if (i === 0 && !existing) {
+        entry.object.add(makeStartLine(entry.def));
+      } else if (i !== 0 && existing) {
+        entry.object.remove(existing);
+        existing.geometry.dispose();
+        existing.material.map?.dispose();
+        existing.material.dispose();
+      }
     });
   }
 

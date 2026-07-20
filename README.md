@@ -34,7 +34,9 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   to move, `G`/`R` to switch move/rotate, or type exact numbers in the
   properties panel. `Ctrl+D` duplicates, `Del` deletes. Gates are numbered in
   track order — use the Order −/+ control (or type a position) in the panel
-  to re-sequence them; everything renumbers automatically.
+  to re-sequence them; everything renumbers automatically. Gate 1 is the
+  start/finish and gets a chequered line on the floor beneath it, which moves
+  if you reorder.
 - **Measure** — toggle 📏 Measure (or `M`), click points; clicking a gate snaps
   to its spot on the floor, so the numbers match a tape measure laid on the
   ground (Shift-click a gate for a 3D distance from its opening centre
