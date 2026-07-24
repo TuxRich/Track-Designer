@@ -192,6 +192,7 @@ export class UI {
     $('gate-cancel').addEventListener('click', () => this.closeDialogs());
     $('load-cancel').addEventListener('click', () => this.closeDialogs());
     $('help-close').addEventListener('click', () => this.closeDialogs());
+    $('share-close').addEventListener('click', () => this.closeDialogs());
     $('btn-help').addEventListener('click', () => this.openDialog('dlg-help'));
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.closeDialogs();
@@ -334,6 +335,35 @@ export class UI {
       }
     };
     this.openDialog('dlg-gate');
+  }
+
+  openShareDialog(url) {
+    const input = $('share-url');
+    const copyBtn = $('share-copy');
+    input.value = url;
+    copyBtn.textContent = 'Copy';
+    this.openDialog('dlg-share');
+    input.focus();
+    input.select();
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        input.select();
+        document.execCommand?.('copy'); // fallback for non-secure contexts
+      }
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => (copyBtn.textContent = 'Copy'), 1500);
+    };
+  }
+
+  // Enter shared view-only mode: lock the track name and hide editing UI
+  // (the rest is handled by CSS via the body.view-only class).
+  setViewOnly(trackName) {
+    document.body.classList.add('view-only');
+    const nameInput = $('track-name');
+    nameInput.value = trackName || 'Shared track';
+    nameInput.readOnly = true;
   }
 
   openLoadDialog(tracks, { onLoad, onDelete }) {

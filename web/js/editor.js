@@ -26,6 +26,9 @@ export class Editor {
     this.ghost = null;
     this.nextNumber = 1;
     this.showArrows = true;
+    // When true (shared view-only link), all gate placement/selection/editing
+    // is disabled. Measurements are handled by MeasureTool and stay enabled.
+    this.readOnly = false;
 
     // Hooks assigned by the UI layer.
     this.onSelectionChanged = () => {};
@@ -72,6 +75,7 @@ export class Editor {
   // ---------- placement ----------
 
   startPlacement(def) {
+    if (this.readOnly) return;
     this.cancelPlacement();
     this.deselect();
     this.placingDef = def;
@@ -114,6 +118,7 @@ export class Editor {
     this._downAt = null;
     if (moved > CLICK_SLOP_PX) return; // was an orbit/pan drag
     if (this.tc.dragging) return;
+    if (this.readOnly) return; // shared view: no placing or selecting gates
 
     if (this.state.mode === 'place' && this.ghost && this.ghost.visible) {
       this.placeGate(this.placingDef, this.ghost.position.x, this.ghost.position.z);
@@ -181,7 +186,7 @@ export class Editor {
   }
 
   deleteSelected() {
-    if (!this.selected) return;
+    if (this.readOnly || !this.selected) return;
     const entry = this.selected;
     this.deselect();
     this.group.remove(entry.object);
@@ -191,7 +196,7 @@ export class Editor {
   }
 
   duplicateSelected() {
-    if (!this.selected) return;
+    if (this.readOnly || !this.selected) return;
     const s = this.selected;
     const entry = this.placeGate(s.def, s.object.position.x + 0.6, s.object.position.z, {
       height: s.object.userData.height,
@@ -204,6 +209,7 @@ export class Editor {
   // Move a gate to position `newNumber` (1-based) in the track order; the
   // other gates shift and everything renumbers.
   reorderGate(entry, newNumber) {
+    if (this.readOnly) return;
     const idx = this.gates.indexOf(entry);
     if (idx < 0 || !Number.isFinite(newNumber)) return;
     const target = THREE.MathUtils.clamp(Math.round(newNumber) - 1, 0, this.gates.length - 1);
@@ -292,7 +298,7 @@ export class Editor {
   }
 
   setTransformMode(mode) {
-    if (!this.selected) return;
+    if (this.readOnly || !this.selected) return;
     this.tc.setMode(mode);
     if (mode === 'rotate') {
       this.tc.showX = false;
@@ -340,6 +346,7 @@ export class Editor {
 
   // Numeric edits from the properties panel.
   applyProps(entry, { x, z, height, rotDeg, dir }) {
+    if (this.readOnly) return;
     const o = entry.object;
     if (Number.isFinite(x)) o.position.x = THREE.MathUtils.clamp(x, 0, this.sceneMgr.arena.w);
     if (Number.isFinite(z)) o.position.z = THREE.MathUtils.clamp(z, 0, this.sceneMgr.arena.d);

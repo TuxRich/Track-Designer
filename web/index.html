@@ -16,10 +16,12 @@
 <body>
 <header id="toolbar">
   <span id="app-title">FPV Track Designer</span>
+  <span id="view-badge" title="You are viewing a shared track — gates are locked">👁 View only</span>
   <input id="track-name" type="text" placeholder="Untitled track" spellcheck="false">
   <button id="btn-new" title="Start a new empty track">New</button>
   <button id="btn-save" title="Save track to server (Ctrl+S)">Save</button>
   <button id="btn-load" title="Load a saved track">Load</button>
+  <button id="btn-share" title="Copy a view-only link to this track">🔗 Share</button>
   <span class="toolbar-sep"></span>
   <button id="btn-measure" class="toggle" title="Measure distances (M). Click points, Esc to finish.">📏 Measure</button>
   <button id="btn-clear-measure" title="Remove all measurements">Clear</button>
@@ -114,6 +116,18 @@
     </div>
   </div>
 
+  <div id="dlg-share" class="dialog hidden">
+    <h2>Share view-only link</h2>
+    <p class="hint">Anyone with this link can view the track and add their own measurements, but cannot move, add, or delete gates, and cannot save changes.</p>
+    <div class="share-row">
+      <input id="share-url" type="text" readonly spellcheck="false">
+      <button id="share-copy" class="primary">Copy</button>
+    </div>
+    <div class="dialog-actions">
+      <button id="share-close">Close</button>
+    </div>
+  </div>
+
   <div id="dlg-load" class="dialog hidden">
     <h2>Load track</h2>
     <div id="track-list"></div>
@@ -139,6 +153,7 @@
       <tr><td>➤</td><td>Show / hide flight direction arrows. Set a gate's direction in its panel — ⇄ Reverse for flat gates; cubes have "In through" / "Out through" faces and show two arrows when the route bends (e.g. in the top, out the front)</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>Finish measuring / cancel placement / deselect</td></tr>
       <tr><td><kbd>Ctrl+S</kbd></td><td>Save track</td></tr>
+      <tr><td>🔗 Share</td><td>Copy a view-only link (recipients can measure but not change gates)</td></tr>
     </table>
     <p class="hint">Measurement clicks on a gate snap to its spot on the floor — the distance you'd tape out when building the track. Shift-click a gate to measure from its opening centre instead. Coordinates are metres from the arena corner.</p>
     <div class="dialog-actions">

@@ -21,6 +21,8 @@ let gateDefs = [];
 let defsById = {};
 let currentTrackId = null;
 
+const viewTrackId = new URLSearchParams(location.search).get('view');
+
 async function init() {
   try {
     gateDefs = await api.gates();
@@ -28,6 +30,22 @@ async function init() {
     ui.buildPalette(gateDefs);
   } catch (err) {
     ui.toast(`Failed to load gate types: ${err.message}`, true);
+    return;
+  }
+  if (viewTrackId) enterViewMode(viewTrackId);
+}
+
+// Shared view-only link: load the track and lock all gate editing. Viewers
+// can still measure and screenshot, but cannot move/add/delete or save gates.
+async function enterViewMode(id) {
+  editor.readOnly = true;
+  try {
+    const t = await api.getTrack(id);
+    loadTrackData(t.data);
+    ui.setViewOnly(t.name);
+    ui.toast(`Viewing shared track "${t.name}"`);
+  } catch (err) {
+    ui.toast(`Could not open shared track: ${err.message}`, true);
   }
 }
 
@@ -107,6 +125,15 @@ $('btn-load').addEventListener('click', async () => {
   }
 });
 
+$('btn-share').addEventListener('click', () => {
+  if (!currentTrackId) {
+    ui.toast('Save your track first, then share it.', true);
+    return;
+  }
+  const url = `${location.origin}${location.pathname}?view=${currentTrackId}`;
+  ui.openShareDialog(url);
+});
+
 $('btn-measure').addEventListener('click', () => {
   ui.setMeasureActive(state.mode !== 'measure');
 });
@@ -159,7 +186,7 @@ window.addEventListener('keydown', (e) => {
 
   if (e.ctrlKey && e.key.toLowerCase() === 's') {
     e.preventDefault();
-    saveTrack();
+    if (!editor.readOnly) saveTrack();
     return;
   }
   if (e.ctrlKey && e.key.toLowerCase() === 'd') {

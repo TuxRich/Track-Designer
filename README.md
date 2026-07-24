@@ -58,6 +58,10 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   minor and 1 m major lines with meter numbers along two edges; coordinates
   are meters from the arena corner.
 - **Save / Load** — tracks are stored server-side as JSON in `data/tracks/`.
+- **Share** — 🔗 Share copies a view-only link (`?view=<id>`) to a saved
+  track. Recipients can orbit, measure, and screenshot, but cannot move, add,
+  or delete gates, and cannot save changes. Save the track first so it has an
+  id to link to.
 - **📷 Screenshot** — downloads a PNG of the current view.
 
 ## Adding a gate type

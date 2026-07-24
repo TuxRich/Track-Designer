@@ -63,6 +63,45 @@ html, body {
 
 .toolbar-spacer { flex: 1; }
 
+#view-badge {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.share-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.share-row input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* View-only (shared-link) mode: hide everything that edits the track. */
+body.view-only #sidebar,
+body.view-only #btn-new,
+body.view-only #btn-save,
+body.view-only #btn-load,
+body.view-only #btn-share,
+body.view-only #btn-arena { display: none; }
+body.view-only #view-badge { display: inline-flex; }
+
 #measure-total {
   color: var(--accent-2);
   font-variant-numeric: tabular-nums;
