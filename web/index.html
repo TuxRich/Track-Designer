@@ -55,7 +55,9 @@
     <div id="props" class="hidden">
       <h2>Gate <span id="prop-number"></span> — <span id="prop-type"></span></h2>
       <div class="prop-grid">
-        <label>Order</label>
+        <label id="prop-asgate-label">Use as gate</label>
+        <input id="prop-asgate" type="checkbox" title="Uncheck to make this a prop (e.g. a table) that isn't part of the flight sequence">
+        <label id="prop-order-label">Order</label>
         <div id="prop-order-row">
           <button id="prop-order-down" title="Move this gate earlier in the track order">−</button>
           <input id="prop-order" type="number" min="1" step="1" title="This gate's position in the track order">

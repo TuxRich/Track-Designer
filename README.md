@@ -37,6 +37,10 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   to re-sequence them; everything renumbers automatically. Gate 1 is the
   start/finish and gets a chequered line on the floor beneath it, which moves
   if you reorder.
+- **Props** — uncheck "Use as gate" in a gate's panel (the default for tables)
+  to make it a prop: it stays in the scene and you can still move, measure to,
+  and screenshot it, but it gets no number, no direction arrow, and isn't part
+  of the flight sequence. Handy for tables you stand gates on.
 - **Measure** — toggle 📏 Measure (or `M`), click points; clicking a gate snaps
   to its spot on the floor, so the numbers match a tape measure laid on the
   ground (Shift-click a gate for a 3D distance from its opening centre
@@ -86,9 +90,16 @@ Or drop a JSON file in `gates/` yourself and restart the server:
 }
 ```
 
-- `shape` — `square`, `hex`, `circle`, `cube`, or `pole`. New shape families are added
-  in `web/js/gates.js` (`shapeBuilders` registry, one function per shape, plus
-  optional form labels in `shapeFieldMeta`).
+- `shape` — `square`, `hex`, `circle`, `cube`, `pole`, `table`, or `banner`.
+  New shape families are added in `web/js/gates.js` (`shapeBuilders` registry,
+  one function per shape, plus optional form labels in `shapeFieldMeta`).
+- A `banner` is a wide solid board (sponsor/club sign) you fly *over* — its
+  arrow arcs over the top edge. `innerSize` is the width, `depth` the panel
+  height, `defaultHeight` the bottom height (0 = on the floor, higher raises
+  it on side posts).
+- A `table` is a solid prop (tabletop on legs) — `innerSize` is its width,
+  `depth` its depth, `defaultHeight` its height. Tables default to props (see
+  below); set `propByDefault` in `shapeFieldMeta` to change that per shape.
 - `innerSize` — the opening, meters (flat-to-flat for hex, diameter for
   circle). For a `pole` this is the pole's height, and `tubeWidth` is its
   diameter.

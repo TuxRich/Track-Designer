@@ -123,6 +123,10 @@ export class UI {
       const entry = this.editor.selected;
       if (entry) this.editor.reorderGate(entry, entry.number + 1);
     });
+    $('prop-asgate').addEventListener('change', () => {
+      const entry = this.editor.selected;
+      if (entry && !this._fillingProps) this.editor.applyProps(entry, { prop: !$('prop-asgate').checked });
+    });
     $('prop-reverse').addEventListener('click', () => {
       const entry = this.editor.selected;
       if (entry) this.editor.applyProps(entry, { dir: entry.dir === 'back' ? 'forward' : 'back' });
@@ -159,17 +163,27 @@ export class UI {
     }
     this._fillingProps = true;
     panel.classList.remove('hidden');
-    $('prop-number').textContent = entry.number;
+    const frame = entry.object.getObjectByName('frame');
+    const isTable = !!frame?.userData.isTable;
+    $('prop-number').textContent = entry.prop ? '(prop)' : entry.number;
     $('prop-type').textContent = entry.def.name;
-    $('prop-order').value = entry.number;
-    $('prop-order').max = this.editor.gates.length;
+    // "Use as gate" — unchecked means a prop, which drops out of the sequence.
+    $('prop-asgate').checked = !entry.prop;
+    const seqCount = this.editor.gates.filter((g) => !g.prop).length;
+    $('prop-order-label').classList.toggle('hidden', entry.prop);
+    $('prop-order-row').classList.toggle('hidden', entry.prop);
+    $('prop-order').value = entry.number || 1;
+    $('prop-order').max = seqCount;
     $('prop-x').value = entry.object.position.x.toFixed(2);
     $('prop-z').value = entry.object.position.z.toFixed(2);
-    $('prop-h').value = (entry.object.userData.height || 0).toFixed(2);
+    // For a table the height field is its own height, not a mount offset.
+    const h = isTable ? entry.object.userData.tableHeight || 0 : entry.object.userData.height || 0;
+    $('prop-h').value = h.toFixed(2);
     $('prop-rot').value = Math.round(THREE.MathUtils.radToDeg(entry.object.rotation.y));
     // Poles have no fly-through direction. Planar gates get ⇄ Reverse;
-    // multidirectional shapes (cube) get the full six-way dropdown.
-    const hasArrow = !!entry.object.getObjectByName('arrow');
+    // multidirectional shapes (cube) get the full six-way dropdown. Props
+    // aren't flown, so they show no direction control at all.
+    const hasArrow = !!entry.object.getObjectByName('arrow') && !entry.prop;
     const multi = !!entry.object.getObjectByName('frame')?.userData.multiDirectional;
     $('prop-reverse-label').classList.toggle('hidden', !hasArrow || multi);
     $('prop-reverse').classList.toggle('hidden', !hasArrow || multi);
@@ -304,11 +318,16 @@ export class UI {
       const meta = shapeFieldMeta[fields.shape.value] || shapeFieldMeta.default;
       $('gate-inner-label').textContent = meta.inner;
       $('gate-tube-label').textContent = meta.tube;
+      $('gate-depth-label').textContent = meta.depthLabel || 'Frame depth (m)';
+      $('gate-height-label').textContent = meta.heightLabel || 'Default height (m)';
+      $('gate-stand-label').textContent = meta.legsLabel || 'Leg colour';
       toggleRow('gate-depth-label', fields.depth, meta.showDepth);
       toggleRow('gate-height-label', fields.height, meta.showHeight);
       toggleRow('gate-stand-label', fields.standColor, meta.showLegs);
       fields.inner.value = String(meta.defaults.inner);
       fields.tube.value = String(meta.defaults.tube);
+      if (meta.defaults.depth !== undefined) fields.depth.value = String(meta.defaults.depth);
+      if (meta.defaults.height !== undefined) fields.height.value = String(meta.defaults.height);
       refreshPreview();
     };
     fields.shape.onchange = applyShapeMeta;

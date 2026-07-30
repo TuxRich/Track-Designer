@@ -3,10 +3,12 @@ import { TransformControls } from '../vendor/TransformControls.js';
 import {
   buildGate,
   setGateHeight,
+  setTableHeight,
   gateTop,
   applyArrowDirection,
   normalizeCubeDir,
   makeStartLine,
+  propByDefault,
 } from './gates.js';
 import { makeTextSprite } from './scene.js';
 
@@ -147,13 +149,19 @@ export class Editor {
 
   // ---------- gate lifecycle ----------
 
-  placeGate(def, x, z, { height = def.defaultHeight || 0, rotY = 0, dir = 'forward', select = false } = {}) {
+  placeGate(
+    def,
+    x,
+    z,
+    { height = def.defaultHeight || 0, rotY = 0, dir = 'forward', prop = propByDefault(def), select = false } = {}
+  ) {
     const object = buildGate(def);
     object.position.set(x, 0, z);
     object.rotation.y = rotY;
-    setGateHeight(object, height);
+    if (object.getObjectByName('frame').userData.isTable) setTableHeight(object, height);
+    else setGateHeight(object, height);
     this.group.add(object);
-    const entry = { typeId: def.id, def, object, rotY, dir: 'forward' };
+    const entry = { typeId: def.id, def, object, rotY, dir: 'forward', prop: !!prop };
     this.gates.push(entry);
     this._applyDir(entry, dir);
     this._applyArrowVisibility(entry);
@@ -175,7 +183,8 @@ export class Editor {
 
   _applyArrowVisibility(entry) {
     const arrow = this._arrowOf(entry);
-    if (arrow) arrow.visible = this.showArrows;
+    // A prop isn't part of the flight sequence, so it never shows an arrow.
+    if (arrow) arrow.visible = this.showArrows && !entry.prop;
   }
 
   setArrowsVisible(v) {
@@ -206,16 +215,20 @@ export class Editor {
     this.selectGate(entry.object);
   }
 
-  // Move a gate to position `newNumber` (1-based) in the track order; the
-  // other gates shift and everything renumbers.
+  // Move a gate to flight position `newNumber` (1-based); the other gates
+  // shift and everything renumbers. Props aren't in the sequence, so their
+  // array positions are preserved as the gate moves around them.
   reorderGate(entry, newNumber) {
-    if (this.readOnly) return;
-    const idx = this.gates.indexOf(entry);
-    if (idx < 0 || !Number.isFinite(newNumber)) return;
-    const target = THREE.MathUtils.clamp(Math.round(newNumber) - 1, 0, this.gates.length - 1);
-    if (idx === target) return;
-    this.gates.splice(idx, 1);
-    this.gates.splice(target, 0, entry);
+    if (this.readOnly || entry.prop || !Number.isFinite(newNumber)) return;
+    const seq = this.gates.filter((g) => !g.prop);
+    const target = THREE.MathUtils.clamp(Math.round(newNumber) - 1, 0, seq.length - 1);
+    if (seq.indexOf(entry) === target) return;
+    const full = this.gates.slice();
+    full.splice(full.indexOf(entry), 1);
+    const anchor = full.filter((g) => !g.prop)[target]; // insert before this gate
+    const insertIdx = anchor ? full.indexOf(anchor) : full.length;
+    full.splice(insertIdx, 0, entry);
+    this.gates = full;
     this._renumber();
     this.onGatesChanged();
     if (this.selected === entry) this.onSelectionChanged(entry); // refresh the panel
@@ -229,17 +242,23 @@ export class Editor {
     this.onGatesChanged();
   }
 
+  // Number the gates in flight order. Props (e.g. tables) are skipped — they
+  // get no number and no label.
   _renumber() {
-    this.gates.forEach((entry, i) => {
-      const n = i + 1;
-      if (entry.number === n && entry.object.getObjectByName('numberLabel')) return;
-      entry.number = n;
+    let n = 0;
+    this.gates.forEach((entry) => {
       const old = entry.object.getObjectByName('numberLabel');
       if (old) {
         entry.object.remove(old);
-        old.material.map.dispose();
+        old.material.map?.dispose();
         old.material.dispose();
       }
+      if (entry.prop) {
+        entry.number = null;
+        return;
+      }
+      n++;
+      entry.number = n;
       const label = makeTextSprite(String(n), {
         height: 0.22,
         color: '#ffffff',
@@ -253,13 +272,15 @@ export class Editor {
     this._updateStartMarker();
   }
 
-  // The chequered start/finish line lives under whichever gate is number 1.
+  // The chequered start/finish line lives under gate number 1 (the first
+  // non-prop gate in the order).
   _updateStartMarker() {
-    this.gates.forEach((entry, i) => {
+    const first = this.gates.find((e) => !e.prop);
+    this.gates.forEach((entry) => {
       const existing = entry.object.getObjectByName('startLine');
-      if (i === 0 && !existing) {
+      if (entry === first && !existing) {
         entry.object.add(makeStartLine(entry.def));
-      } else if (i !== 0 && existing) {
+      } else if (entry !== first && existing) {
         entry.object.remove(existing);
         existing.geometry.dispose();
         existing.material.map?.dispose();
@@ -345,18 +366,30 @@ export class Editor {
   }
 
   // Numeric edits from the properties panel.
-  applyProps(entry, { x, z, height, rotDeg, dir }) {
+  applyProps(entry, { x, z, height, rotDeg, dir, prop }) {
     if (this.readOnly) return;
     const o = entry.object;
+    const isTable = o.getObjectByName('frame').userData.isTable;
     if (Number.isFinite(x)) o.position.x = THREE.MathUtils.clamp(x, 0, this.sceneMgr.arena.w);
     if (Number.isFinite(z)) o.position.z = THREE.MathUtils.clamp(z, 0, this.sceneMgr.arena.d);
     if (Number.isFinite(height)) {
-      setGateHeight(o, Math.max(0, height));
+      if (isTable) {
+        setTableHeight(o, height);
+        this._applyDir(entry, entry.dir); // rebuild the fly-over arc at the new height
+      } else {
+        setGateHeight(o, Math.max(0, height));
+      }
       const label = this._labelOf(entry);
       if (label) label.position.y = gateTop(o) + 0.22;
     }
     if (Number.isFinite(rotDeg)) o.rotation.y = THREE.MathUtils.degToRad(rotDeg);
     if (dir !== undefined) this._applyDir(entry, dir);
+    if (prop !== undefined && !!prop !== entry.prop) {
+      entry.prop = !!prop;
+      this._renumber(); // add/remove this gate's number and shift the rest
+      this._applyArrowVisibility(entry); // props show no arrow
+      this.onSelectionChanged(entry); // Order row visibility depends on prop
+    }
     this._syncEntry(entry);
     this.onGatesChanged();
   }
@@ -364,14 +397,19 @@ export class Editor {
   // ---------- serialization ----------
 
   toJSON() {
-    return this.gates.map((g) => ({
-      typeId: g.typeId,
-      x: round3(g.object.position.x),
-      z: round3(g.object.position.z),
-      height: round3(g.object.userData.height || 0),
-      rotY: round3(g.object.rotation.y),
-      dir: g.dir || 'forward',
-    }));
+    return this.gates.map((g) => {
+      const isTable = g.object.getObjectByName('frame').userData.isTable;
+      return {
+        typeId: g.typeId,
+        x: round3(g.object.position.x),
+        z: round3(g.object.position.z),
+        // For a table, "height" is its own height; for others, the mount offset.
+        height: round3(isTable ? g.object.userData.tableHeight || 0 : g.object.userData.height || 0),
+        rotY: round3(g.object.rotation.y),
+        dir: g.dir || 'forward',
+        prop: !!g.prop,
+      };
+    });
   }
 
   loadFrom(gateList, defsById) {
@@ -382,11 +420,13 @@ export class Editor {
         console.warn(`Track references unknown gate type "${g.typeId}" — skipped`);
         continue;
       }
-      // Older tracks saved a boolean `reversed` instead of `dir`.
+      // Older tracks saved a boolean `reversed` instead of `dir`, and had no
+      // `prop` field (fall back to the type's default).
       this.placeGate(def, g.x, g.z, {
         height: g.height,
         rotY: g.rotY,
         dir: g.dir || (g.reversed ? 'back' : 'forward'),
+        prop: g.prop !== undefined ? g.prop : propByDefault(def),
       });
     }
   }

@@ -248,6 +248,13 @@ button.toggle.active { background: var(--accent-2); border-color: var(--accent-2
   font-variant-numeric: tabular-nums;
 }
 
+.prop-grid input[type="checkbox"] {
+  width: auto;
+  justify-self: start;
+  margin: 0;
+  cursor: pointer;
+}
+
 #prop-order-row {
   display: flex;
   gap: 4px;

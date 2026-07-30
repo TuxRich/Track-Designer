@@ -143,7 +143,132 @@ export const shapeBuilders = {
     g.userData.directional = false;
     return g;
   },
+
+  // A solid table: tabletop slab on four legs. innerSize is the tabletop
+  // width (X), depth the tabletop depth (Z), defaultHeight the table height.
+  // The body is (re)built by setTableHeight so the height can be edited; the
+  // builder just sets up an empty container. You don't fly through a table —
+  // it's non-directional and usually a prop (see propByDefault).
+  table(def) {
+    const g = new THREE.Group();
+    const body = new THREE.Group();
+    body.name = 'tableBody';
+    g.add(body);
+    g.userData.isTable = true;
+    g.userData.frameHeight = def.defaultHeight || 0.7;
+    // Used as a gate, a table gets the normal straight direction arrow (sat
+    // under the tabletop by setTableHeight — you fly under it). Hidden while
+    // it's a prop.
+    g.userData.pickSize = { w: def.innerSize, h: def.defaultHeight || 0.7 };
+    return g;
+  },
+
+  // A wide solid banner/hoarding (sponsor or club board) you fly OVER, not
+  // through. innerSize is the width, depth the panel height, tubeWidth the
+  // border/panel thickness. Uses the standard mount-height mechanic so it can
+  // stand on the floor or be raised on side posts. Marked flyOver so its
+  // arrow arcs over the top edge instead of pointing through the panel.
+  banner(def) {
+    const g = new THREE.Group();
+    const W = def.innerSize;
+    const H = def.depth || 0.6;
+    const thick = Math.max(0.02, def.tubeWidth || 0.03);
+
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(W, H, thick), frameMaterial(def));
+    panel.position.y = H / 2;
+    g.add(panel);
+
+    // Dark border bars so it reads as a framed sign.
+    const borderMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7 });
+    const bw = thick;
+    const bz = thick * 1.4;
+    const bars = [
+      [new THREE.BoxGeometry(W + bw, bw, bz), 0, H],
+      [new THREE.BoxGeometry(W + bw, bw, bz), 0, 0],
+      [new THREE.BoxGeometry(bw, H + bw, bz), -W / 2, H / 2],
+      [new THREE.BoxGeometry(bw, H + bw, bz), W / 2, H / 2],
+    ];
+    for (const [geo, x, y] of bars) {
+      const bar = new THREE.Mesh(geo, borderMat);
+      bar.position.set(x, y, 0);
+      g.add(bar);
+    }
+
+    g.userData.frameHeight = H;
+    g.userData.flyOver = true; // you fly over the top, not through
+    g.userData.pickSize = { w: W, h: H };
+    return g;
+  },
 };
+
+// Fills a table's body group with a tabletop slab and four legs sized to
+// `def` at table height `H`. Applied at build time and whenever the height
+// changes.
+function buildTableMeshes(body, def, H, ghost) {
+  const W = def.innerSize;
+  const D = def.depth || def.innerSize;
+  const t = Math.max(0.02, def.tubeWidth || 0.05);
+  const style = (mat) => {
+    if (ghost) {
+      mat.transparent = true;
+      mat.opacity = 0.45;
+      mat.depthWrite = false;
+    }
+    return mat;
+  };
+  const topMat = style(frameMaterial(def));
+  const legColor = new THREE.Color(def.stand?.color || '#5a3a1a');
+  const legMat = style(new THREE.MeshStandardMaterial({ color: legColor, roughness: 0.85 }));
+
+  const top = new THREE.Mesh(new THREE.BoxGeometry(W, t, D), topMat);
+  top.position.y = H - t / 2;
+  top.castShadow = !ghost;
+  top.receiveShadow = !ghost;
+  body.add(top);
+
+  const legH = Math.max(0.02, H - t);
+  const inset = t / 2 + 0.03;
+  for (const sx of [-(W / 2 - inset), W / 2 - inset]) {
+    for (const sz of [-(D / 2 - inset), D / 2 - inset]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(t, legH, t), legMat);
+      leg.position.set(sx, legH / 2, sz);
+      leg.castShadow = !ghost;
+      body.add(leg);
+    }
+  }
+}
+
+// Sets a table's height, rebuilding its body. Unlike setGateHeight (which
+// lifts a gate off the floor on stand legs), a table always sits on the
+// floor and `height` is the table's own height.
+export function setTableHeight(gate, height, ghost = false) {
+  height = Math.max(0.05, height);
+  const def = gate.userData.def;
+  const frame = gate.getObjectByName('frame');
+  const body = frame.getObjectByName('tableBody');
+  for (let i = body.children.length - 1; i >= 0; i--) {
+    const c = body.children[i];
+    body.remove(c);
+    c.geometry?.dispose();
+    c.material?.dispose();
+  }
+  buildTableMeshes(body, def, height, ghost);
+  frame.position.y = 0;
+  frame.userData.frameHeight = height;
+  gate.userData.height = 0;
+  gate.userData.tableHeight = height;
+  const pick = frame.getObjectByName('pickFill');
+  if (pick) pick.position.y = height / 2;
+  // Sit the straight direction arrow in the clear space under the tabletop —
+  // you fly under the table, between the legs (segments rebuilt by the editor).
+  const arrow = frame.getObjectByName('arrow');
+  if (arrow) arrow.position.y = Math.max(0.1, height * 0.4);
+}
+
+// Whether a gate type is a prop (not part of the flight sequence) by default.
+export function propByDefault(def) {
+  return !!shapeFieldMeta[def.shape]?.propByDefault;
+}
 
 // Per-shape labels/fields for the "New gate type" form. Shapes without an
 // entry use `default`. innerSize/tubeWidth mean different things for a pole,
@@ -172,6 +297,30 @@ export const shapeFieldMeta = {
     showHeight: true,
     showLegs: true,
     defaults: { inner: 0.5, tube: 0.03 },
+  },
+  table: {
+    inner: 'Width (m)',
+    tube: 'Leg / top thickness (m)',
+    depthLabel: 'Depth (m)',
+    heightLabel: 'Table height (m)',
+    legsLabel: 'Leg colour',
+    showDepth: true,
+    showHeight: true,
+    showLegs: true,
+    // Tables are usually props to stand gates on, so default to "not a gate".
+    propByDefault: true,
+    defaults: { inner: 1.2, tube: 0.05, depth: 0.6, height: 0.7 },
+  },
+  banner: {
+    inner: 'Width (m)',
+    tube: 'Border thickness (m)',
+    depthLabel: 'Panel height (m)',
+    heightLabel: 'Bottom height (m)',
+    legsLabel: 'Post colour',
+    showDepth: true,
+    showHeight: true,
+    showLegs: true,
+    defaults: { inner: 2.0, tube: 0.03, depth: 0.6, height: 0 },
   },
 };
 
@@ -247,6 +396,29 @@ function arrowSegment(from, to) {
   return g;
 }
 
+// An arc that rises from the front, over the top edge, and down the back —
+// the "fly over this" cue for banners. `reverse` flips the travel direction.
+function flyOverArrow(frameHeight, reverse) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9 });
+  const half = frameHeight / 2;
+  const reach = Math.max(0.35, half + 0.15);
+  const peak = half + 0.22; // clear the top edge
+  const sign = reverse ? -1 : 1;
+  const start = new THREE.Vector3(0, 0, -reach * sign);
+  const end = new THREE.Vector3(0, 0, reach * sign);
+  const curve = new THREE.CatmullRomCurve3([start, new THREE.Vector3(0, peak, 0), end]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.012, 8, false), mat));
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.14, 12), mat);
+  cone.position.copy(end);
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), curve.getTangent(1).normalize());
+  g.add(cone);
+  g.traverse((o) => {
+    if (o.isMesh) o.userData.noShadow = true;
+  });
+  return g;
+}
+
 // (Re)builds the arrow meshes inside the gate's 'arrow' container for the
 // given direction value.
 export function applyArrowDirection(gate, dir) {
@@ -277,6 +449,8 @@ export function applyArrowDirection(gate, dir) {
       const center = new THREE.Vector3();
       arrow.add(arrowSegment(entry, center), arrowSegment(center, exit));
     }
+  } else if (frame.userData.flyOver) {
+    arrow.add(flyOverArrow(frame.userData.frameHeight, dir === 'back'));
   } else {
     const len = Math.max(0.4, def.innerSize * 0.9);
     const half = new THREE.Vector3(0, 0, len / 2);
@@ -331,6 +505,28 @@ export const thumbnailDrawers = {
       ctx.lineTo(cx + o, cy - o);
     }
     ctx.stroke();
+  },
+  table(ctx, s, lw) {
+    ctx.lineWidth = Math.max(2, lw * 0.6);
+    const m = ctx.lineWidth + 1;
+    const topY = s * 0.32;
+    ctx.beginPath();
+    ctx.moveTo(m, topY); // tabletop
+    ctx.lineTo(s - m, topY);
+    for (const x of [m + 3, s - m - 3]) {
+      ctx.moveTo(x, topY); // legs
+      ctx.lineTo(x, s - m);
+    }
+    ctx.stroke();
+  },
+  banner(ctx, s, lw) {
+    ctx.lineWidth = Math.max(2, lw * 0.6);
+    const m = ctx.lineWidth + 1;
+    const h = (s - 2 * m) * 0.5;
+    const y = (s - h) / 2;
+    ctx.fillRect(m, y, s - 2 * m, h); // solid (blocked) panel
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.strokeRect(m, y, s - 2 * m, h);
   },
 };
 
@@ -437,7 +633,8 @@ export function buildGate(def, { ghost = false } = {}) {
     }
   });
 
-  setGateHeight(gate, def.defaultHeight || 0, ghost);
+  if (frame.userData.isTable) setTableHeight(gate, def.defaultHeight || 0.7, ghost);
+  else setGateHeight(gate, def.defaultHeight || 0, ghost);
   return gate;
 }
 
