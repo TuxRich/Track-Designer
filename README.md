@@ -37,6 +37,9 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   to re-sequence them; everything renumbers automatically. Gate 1 is the
   start/finish and gets a chequered line on the floor beneath it, which moves
   if you reorder.
+- **Replace** — the "Replace with…" dropdown in a gate's panel swaps it for a
+  different gate type in the exact same spot, keeping its position, rotation,
+  height, direction, prop status and sequence number.
 - **Props** — uncheck "Use as gate" in a gate's panel (the default for tables)
   to make it a prop: it stays in the scene and you can still move, measure to,
   and screenshot it, but it gets no number, no direction arrow, and isn't part

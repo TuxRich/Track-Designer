@@ -215,6 +215,50 @@ export class Editor {
     this.selectGate(entry.object);
   }
 
+  // Swap `entry` for a different gate type in the same spot, keeping its
+  // position, rotation, height, direction, prop status and sequence number.
+  replaceGate(entry, newDef) {
+    if (this.readOnly || !newDef || newDef.id === entry.typeId) return entry;
+    const idx = this.gates.indexOf(entry);
+    if (idx < 0) return entry;
+
+    const o = entry.object;
+    const isTable = o.getObjectByName('frame').userData.isTable;
+    const height = isTable ? o.userData.tableHeight || 0 : o.userData.height || 0;
+    const x = o.position.x;
+    const z = o.position.z;
+    const rotY = o.rotation.y;
+    const dir = entry.dir;
+    const prop = entry.prop;
+    const reselect = this.selected === entry;
+
+    const object = buildGate(newDef);
+    object.position.set(x, 0, z);
+    object.rotation.y = rotY;
+    if (object.getObjectByName('frame').userData.isTable) setTableHeight(object, height);
+    else setGateHeight(object, height);
+
+    if (reselect) this.deselect();
+    this.group.remove(o);
+    o.traverse((c) => {
+      c.geometry?.dispose();
+      if (c.material) {
+        c.material.map?.dispose();
+        c.material.dispose();
+      }
+    });
+
+    const newEntry = { typeId: newDef.id, def: newDef, object, rotY, dir: 'forward', prop };
+    this.gates[idx] = newEntry; // same slot keeps its number/order
+    this.group.add(object);
+    this._applyDir(newEntry, dir);
+    this._applyArrowVisibility(newEntry);
+    this._renumber();
+    this.onGatesChanged();
+    if (reselect) this.selectGate(object);
+    return newEntry;
+  }
+
   // Move a gate to flight position `newNumber` (1-based); the other gates
   // shift and everything renumbers. Props aren't in the sequence, so their
   // array positions are preserved as the gate moves around them.

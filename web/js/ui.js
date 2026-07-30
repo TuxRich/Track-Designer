@@ -40,6 +40,15 @@ export class UI {
   }
 
   buildPalette(defs) {
+    this.gateDefs = defs;
+    const replace = $('prop-replace');
+    replace.innerHTML = '<option value="">Replace with…</option>';
+    for (const def of defs) {
+      const opt = document.createElement('option');
+      opt.value = def.id;
+      opt.textContent = def.name;
+      replace.appendChild(opt);
+    }
     const palette = $('palette');
     palette.innerHTML = '';
     for (const def of defs) {
@@ -127,6 +136,13 @@ export class UI {
       const entry = this.editor.selected;
       if (entry && !this._fillingProps) this.editor.applyProps(entry, { prop: !$('prop-asgate').checked });
     });
+    $('prop-replace').addEventListener('change', () => {
+      const entry = this.editor.selected;
+      const id = $('prop-replace').value;
+      const def = this.gateDefs?.find((d) => d.id === id);
+      if (entry && def && !this._fillingProps) this.editor.replaceGate(entry, def);
+      $('prop-replace').value = '';
+    });
     $('prop-reverse').addEventListener('click', () => {
       const entry = this.editor.selected;
       if (entry) this.editor.applyProps(entry, { dir: entry.dir === 'back' ? 'forward' : 'back' });
@@ -180,6 +196,7 @@ export class UI {
     const h = isTable ? entry.object.userData.tableHeight || 0 : entry.object.userData.height || 0;
     $('prop-h').value = h.toFixed(2);
     $('prop-rot').value = Math.round(THREE.MathUtils.radToDeg(entry.object.rotation.y));
+    $('prop-replace').value = ''; // always reset to the "Replace with…" prompt
     // Poles have no fly-through direction. Planar gates get ⇄ Reverse;
     // multidirectional shapes (cube) get the full six-way dropdown. Props
     // aren't flown, so they show no direction control at all.
