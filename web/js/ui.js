@@ -16,9 +16,6 @@ export class UI {
 
     editor.onSelectionChanged = (entry) => this._showProps(entry);
     editor.onPlacementEnded = () => this._setActivePaletteItem(null);
-    measure.onTotalChanged = (t) => {
-      $('measure-total').textContent = t > 0 ? `Σ ${t.toFixed(2)} m` : '';
-    };
     measure.onMarkerSelectionChanged = (sel) => {
       if (sel) this.setStatus('Measurement point — drag to move, Del to remove, Esc to deselect');
       else if (this.state.mode !== 'measure') this.setStatus();
