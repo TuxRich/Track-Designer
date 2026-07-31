@@ -52,8 +52,8 @@
     <canvas id="canvas3d"></canvas>
 
     <div id="props" class="hidden">
-      <h2>Gate <span id="prop-number"></span> — <span id="prop-type"></span></h2>
-      <div class="prop-grid">
+      <h2 id="prop-title"></h2>
+      <div id="prop-single" class="prop-grid">
         <label id="prop-asgate-label">Use as gate</label>
         <input id="prop-asgate" type="checkbox" title="Uncheck to make this a prop (e.g. a table) that isn't part of the flight sequence">
         <label id="prop-order-label">Order</label>
@@ -75,7 +75,7 @@
         <button id="prop-dup" title="Duplicate this gate (Ctrl+D)">Duplicate</button>
         <button id="prop-del" class="danger" title="Delete this gate (Del)">Delete</button>
       </div>
-      <p class="hint">G = move, R = rotate, Esc = deselect</p>
+      <p class="hint" id="prop-hint">G = move, R = rotate, Esc = deselect</p>
     </div>
 
     <div id="status-bar"><span id="status-mode">Orbit — drag to rotate, right-drag to pan, scroll to zoom</span></div>
@@ -146,10 +146,11 @@
       <tr><td>Right-drag</td><td>Pan camera</td></tr>
       <tr><td>Scroll</td><td>Zoom</td></tr>
       <tr><td>Click gate</td><td>Select</td></tr>
-      <tr><td><kbd>G</kbd></td><td>Move selected gate</td></tr>
-      <tr><td><kbd>R</kbd></td><td>Rotate selected gate</td></tr>
-      <tr><td><kbd>Ctrl+D</kbd></td><td>Duplicate selected gate</td></tr>
-      <tr><td><kbd>Del</kbd></td><td>Delete selected gate</td></tr>
+      <tr><td><kbd>Shift</kbd>/<kbd>Ctrl</kbd>+click</td><td>Add/remove a gate from the selection (move or rotate them as a group)</td></tr>
+      <tr><td><kbd>G</kbd></td><td>Move selected gate(s)</td></tr>
+      <tr><td><kbd>R</kbd></td><td>Rotate selected gate(s)</td></tr>
+      <tr><td><kbd>Ctrl+D</kbd></td><td>Duplicate selected gate(s)</td></tr>
+      <tr><td><kbd>Del</kbd></td><td>Delete selected gate(s)</td></tr>
       <tr><td><kbd>M</kbd></td><td>Toggle measure mode</td></tr>
       <tr><td>Click a 📍 point</td><td>Select a measurement point — drag to move it, <kbd>Del</kbd> to remove it</td></tr>
       <tr><td>👁</td><td>Show / hide all measurements</td></tr>

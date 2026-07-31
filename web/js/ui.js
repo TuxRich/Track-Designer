@@ -170,16 +170,26 @@ export class UI {
 
   _showProps(entry) {
     const panel = $('props');
-    if (!entry) {
+    const count = this.editor.selection.length;
+    if (count === 0) {
       panel.classList.add('hidden');
       return;
     }
+    if (count > 1) {
+      // Group selection: show a summary; Duplicate/Delete act on all of them.
+      panel.classList.remove('hidden');
+      $('prop-single').classList.add('hidden');
+      $('prop-title').textContent = `${count} gates selected`;
+      $('prop-hint').textContent = 'Drag to move, R to rotate the group, Esc to deselect';
+      return;
+    }
+    $('prop-single').classList.remove('hidden');
+    $('prop-hint').textContent = 'G = move, R = rotate, Esc = deselect';
     this._fillingProps = true;
     panel.classList.remove('hidden');
     const frame = entry.object.getObjectByName('frame');
     const isTable = !!frame?.userData.isTable;
-    $('prop-number').textContent = entry.prop ? '(prop)' : entry.number;
-    $('prop-type').textContent = entry.def.name;
+    $('prop-title').textContent = `Gate ${entry.prop ? '(prop)' : entry.number} — ${entry.def.name}`;
     // "Use as gate" — unchecked means a prop, which drops out of the sequence.
     $('prop-asgate').checked = !entry.prop;
     const seqCount = this.editor.gates.filter((g) => !g.prop).length;

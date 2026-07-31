@@ -23,6 +23,7 @@ export class Editor {
     this.sceneMgr = sceneMgr;
     this.state = state; // shared { mode } object
     this.gates = []; // [{ typeId, def, object, rotY, dir }] — height lives in object.userData
+    this.selection = []; // selected entries; `selected` mirrors it when exactly one
     this.selected = null;
     this.placingDef = null;
     this.ghost = null;
@@ -43,6 +44,12 @@ export class Editor {
     this.group = new THREE.Group();
     sceneMgr.scene.add(this.group);
 
+    // Pivot the gizmo attaches to when several gates are selected; the gates
+    // are temporarily parented under it during a drag so they move/rotate as
+    // one, then baked back into `group` on release.
+    this.pivot = new THREE.Group();
+    sceneMgr.scene.add(this.pivot);
+
     this.tc = new TransformControls(sceneMgr.camera, sceneMgr.canvas);
     this.tc.setSize(0.8);
     sceneMgr.scene.add(this.tc);
@@ -50,10 +57,15 @@ export class Editor {
 
     this.tc.addEventListener('dragging-changed', (e) => {
       sceneMgr.controls.enabled = !e.value;
-      if (!e.value && this.selected) this._settleAfterDrag(this.selected);
+      if (this.selection.length > 1) {
+        if (e.value) this._beginGroupDrag();
+        else this._endGroupDrag();
+      } else if (!e.value && this.selected) {
+        this._settleAfterDrag(this.selected);
+      }
     });
     this.tc.addEventListener('objectChange', () => {
-      if (this.selected) this._syncEntry(this.selected);
+      if (this.selection.length === 1) this._syncEntry(this.selected);
       this.onGatesChanged();
     });
 
@@ -133,10 +145,11 @@ export class Editor {
         return;
       }
       const hit = this.sceneMgr.pickObjects(e, this.gateObjects);
+      const additive = e.shiftKey || e.ctrlKey || e.metaKey;
       if (hit) {
-        this.selectGate(this._gateGroupOf(hit.object));
-      } else {
-        this.deselect();
+        this.selectGate(this._gateGroupOf(hit.object), additive);
+      } else if (!additive) {
+        this.deselect(); // keep the selection when modifier-clicking empty space
       }
     }
   }
@@ -194,25 +207,41 @@ export class Editor {
     if (ghostArrow) ghostArrow.visible = v;
   }
 
+  _gateHeight(entry) {
+    const o = entry.object;
+    return o.getObjectByName('frame').userData.isTable
+      ? o.userData.tableHeight || 0
+      : o.userData.height || 0;
+  }
+
   deleteSelected() {
-    if (this.readOnly || !this.selected) return;
-    const entry = this.selected;
+    if (this.readOnly || !this.selection.length) return;
+    const doomed = this.selection.slice();
     this.deselect();
-    this.group.remove(entry.object);
-    this.gates.splice(this.gates.indexOf(entry), 1);
+    for (const entry of doomed) {
+      this.group.remove(entry.object);
+      const i = this.gates.indexOf(entry);
+      if (i >= 0) this.gates.splice(i, 1);
+    }
     this._renumber();
     this.onGatesChanged();
   }
 
   duplicateSelected() {
-    if (this.readOnly || !this.selected) return;
-    const s = this.selected;
-    const entry = this.placeGate(s.def, s.object.position.x + 0.6, s.object.position.z, {
-      height: s.object.userData.height,
-      rotY: s.object.rotation.y,
-      dir: s.dir,
-    });
-    this.selectGate(entry.object);
+    if (this.readOnly || !this.selection.length) return;
+    const dups = this.selection.map((s) =>
+      this.placeGate(s.def, s.object.position.x + 0.6, s.object.position.z, {
+        height: this._gateHeight(s),
+        rotY: s.object.rotation.y,
+        dir: s.dir,
+        prop: s.prop,
+      })
+    );
+    // Select the new copies as a group.
+    this._clearEmissive();
+    this.selection = dups;
+    for (const e of dups) this._setEmissive(e.object, 0x553311);
+    this._afterSelectionChange();
   }
 
   // Swap `entry` for a different gate type in the same spot, keeping its
@@ -339,31 +368,89 @@ export class Editor {
 
   // ---------- selection & transform ----------
 
-  selectGate(object) {
-    if (!object) return;
-    if (this.selected?.object === object) return;
-    this.deselect();
+  // Select `object`. With `additive` (Shift/Ctrl-click) it toggles the gate in
+  // the current selection; otherwise it becomes the sole selection.
+  selectGate(object, additive = false) {
+    if (this.readOnly || !object) return;
     const entry = this.gates.find((g) => g.object === object);
     if (!entry) return;
-    this.selected = entry;
-    this._setEmissive(object, 0x553311);
-    this.tc.attach(object);
-    // Route through setTransformMode so the per-axis visibility flags from a
-    // previous rotate-mode selection are reset, not just the mode.
-    this.setTransformMode('translate');
-    this.onSelectionChanged(entry);
+    if (additive) {
+      const i = this.selection.indexOf(entry);
+      if (i >= 0) {
+        this._setEmissive(entry.object, 0x000000);
+        this.selection.splice(i, 1);
+      } else {
+        this._setEmissive(entry.object, 0x553311);
+        this.selection.push(entry);
+      }
+    } else {
+      if (this.selection.length === 1 && this.selection[0] === entry) return;
+      this._clearEmissive();
+      this.selection = [entry];
+      this._setEmissive(entry.object, 0x553311);
+    }
+    this._afterSelectionChange();
   }
 
   deselect() {
-    if (!this.selected) return;
-    this._setEmissive(this.selected.object, 0x000000);
-    this.tc.detach();
-    this.selected = null;
-    this.onSelectionChanged(null);
+    if (!this.selection.length) return;
+    this._clearEmissive();
+    this.selection = [];
+    this._afterSelectionChange();
+  }
+
+  _clearEmissive() {
+    for (const e of this.selection) this._setEmissive(e.object, 0x000000);
+  }
+
+  // Attach the gizmo appropriately after any selection change and notify the UI.
+  _afterSelectionChange() {
+    this.selected = this.selection.length === 1 ? this.selection[0] : null;
+    if (this.selection.length === 0) {
+      this.tc.detach();
+    } else if (this.selection.length === 1) {
+      this.tc.attach(this.selection[0].object);
+      this.setTransformMode('translate');
+    } else {
+      this._positionPivotAtCentroid();
+      this.tc.attach(this.pivot);
+      this.setTransformMode('translate');
+    }
+    this.onSelectionChanged(this.selected);
+  }
+
+  _centroid(entries) {
+    const c = new THREE.Vector3();
+    for (const e of entries) c.add(e.object.position);
+    if (entries.length) c.multiplyScalar(1 / entries.length);
+    return c;
+  }
+
+  _positionPivotAtCentroid() {
+    this.pivot.position.copy(this._centroid(this.selection));
+    this.pivot.rotation.set(0, 0, 0);
+    this.pivot.updateMatrixWorld(true);
+  }
+
+  // Parent the selected gates under the pivot so the gizmo moves them together.
+  _beginGroupDrag() {
+    for (const entry of this.selection) this.pivot.attach(entry.object);
+  }
+
+  // Bake the pivot transform back into each gate, return them to the editor
+  // group, settle them, and re-centre the pivot for the next drag.
+  _endGroupDrag() {
+    for (const entry of this.selection) {
+      this.group.attach(entry.object);
+      this._settleGate(entry);
+    }
+    this._positionPivotAtCentroid();
+    this.onGatesChanged();
+    this.onSelectionChanged(this.selected);
   }
 
   setTransformMode(mode) {
-    if (this.readOnly || !this.selected) return;
+    if (this.readOnly || !this.selection.length) return;
     this.tc.setMode(mode);
     if (mode === 'rotate') {
       this.tc.showX = false;
@@ -382,21 +469,31 @@ export class Editor {
     });
   }
 
-  // While dragging, TransformControls may move the group off the floor
-  // (y != 0). On release, fold that offset into the gate's stand height and
-  // clamp the gate inside the arena.
-  _settleAfterDrag(entry) {
+  // Fold any vertical drag offset into the gate's height and clamp it inside
+  // the arena. Floor props (tables/chairs) stay on the floor. No UI hooks —
+  // callers fire those once.
+  _settleGate(entry) {
     const o = entry.object;
+    const isTable = o.getObjectByName('frame').userData.isTable;
     if (Math.abs(o.position.y) > 1e-4) {
-      const h = Math.max(0, (o.userData.height || 0) + o.position.y);
-      o.position.y = 0;
-      setGateHeight(o, this._snapHeight(h));
-      const label = this._labelOf(entry);
-      if (label) label.position.y = gateTop(o) + 0.22;
+      if (isTable) {
+        o.position.y = 0; // floor prop — discard the vertical offset
+      } else {
+        const h = Math.max(0, (o.userData.height || 0) + o.position.y);
+        o.position.y = 0;
+        setGateHeight(o, this._snapHeight(h));
+        const label = this._labelOf(entry);
+        if (label) label.position.y = gateTop(o) + 0.22;
+      }
     }
     o.position.x = THREE.MathUtils.clamp(o.position.x, 0, this.sceneMgr.arena.w);
     o.position.z = THREE.MathUtils.clamp(o.position.z, 0, this.sceneMgr.arena.d);
     this._syncEntry(entry);
+  }
+
+  // Single-gate drag release.
+  _settleAfterDrag(entry) {
+    this._settleGate(entry);
     this.onGatesChanged();
     this.onSelectionChanged(entry); // refresh the properties panel
   }

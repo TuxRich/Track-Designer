@@ -32,7 +32,10 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   Stay in placement mode to drop several; `Esc` to stop.
 - **Edit a gate** — click it (the middle of the opening works). Drag the gizmo
   to move, `G`/`R` to switch move/rotate, or type exact numbers in the
-  properties panel. `Ctrl+D` duplicates, `Del` deletes. Gates are numbered in
+  properties panel. `Ctrl+D` duplicates, `Del` deletes. **Shift/Ctrl-click**
+  adds or removes gates from a multi-selection — drag or rotate the gizmo to
+  move/rotate them all as a group (rotation is around the group's centre);
+  `Ctrl+D`/`Del` act on the whole selection. Gates are numbered in
   track order — use the Order −/+ control (or type a position) in the panel
   to re-sequence them; everything renumbers automatically. Gate 1 is the
   start/finish and gets a chequered line on the floor beneath it, which moves
