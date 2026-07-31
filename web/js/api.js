@@ -15,6 +15,7 @@ async function request(url, options = {}) {
 
 export const api = {
   gates: () => request('/api/gates'),
+  banners: () => request('/api/banners'),
   createGate: (def) => request('/api/gates', { method: 'POST', body: JSON.stringify(def) }),
   listTracks: () => request('/api/tracks'),
   getTrack: (id) => request(`/api/tracks/${id}`),

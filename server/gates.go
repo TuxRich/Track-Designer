@@ -18,15 +18,18 @@ import (
 // creating one through POST /api/gates, which writes the file and registers
 // the type without a restart.
 type GateType struct {
-	ID            string          `json:"id"`
-	Name          string          `json:"name"`
-	Shape         string          `json:"shape"`
-	InnerSize     float64         `json:"innerSize"`
-	TubeWidth     float64         `json:"tubeWidth"`
-	Depth         float64         `json:"depth"`
-	Color         string          `json:"color"`
-	DefaultHeight float64         `json:"defaultHeight"`
-	Stand         json.RawMessage `json:"stand,omitempty"`
+	ID            string  `json:"id"`
+	Name          string  `json:"name"`
+	Shape         string  `json:"shape"`
+	InnerSize     float64 `json:"innerSize"`
+	TubeWidth     float64 `json:"tubeWidth"`
+	Depth         float64 `json:"depth"`
+	Color         string  `json:"color"`
+	DefaultHeight float64 `json:"defaultHeight"`
+	// Image is an optional banner artwork filename in the banners directory,
+	// served at /banners/<image>. Used by banner gates for sponsor/club art.
+	Image string          `json:"image,omitempty"`
+	Stand json.RawMessage `json:"stand,omitempty"`
 }
 
 // GateRegistry holds all gate types loaded at startup plus any created at

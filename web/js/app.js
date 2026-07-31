@@ -32,6 +32,8 @@ async function init() {
     ui.toast(`Failed to load gate types: ${err.message}`, true);
     return;
   }
+  // Banner artwork options for the New-gate form (best-effort).
+  ui.bannerImages = await api.banners().catch(() => []);
   if (viewTrackId) enterViewMode(viewTrackId);
 }
 

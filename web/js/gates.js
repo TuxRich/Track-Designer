@@ -174,7 +174,15 @@ export const shapeBuilders = {
     const H = def.depth || 0.6;
     const thick = Math.max(0.02, def.tubeWidth || 0.03);
 
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(W, H, thick), frameMaterial(def));
+    const panelMat = frameMaterial(def);
+    if (def.image) {
+      // Sponsor/club artwork from the banners directory, stretched to fit.
+      const tex = new THREE.TextureLoader().load(`/banners/${encodeURIComponent(def.image)}`);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      panelMat.map = tex;
+      panelMat.color.set(0xffffff); // show the image at full brightness
+    }
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(W, H, thick), panelMat);
     panel.position.y = H / 2;
     g.add(panel);
 
@@ -320,6 +328,7 @@ export const shapeFieldMeta = {
     showDepth: true,
     showHeight: true,
     showLegs: true,
+    showImage: true, // banner artwork from the banners folder
     defaults: { inner: 2.0, tube: 0.03, depth: 0.6, height: 0 },
   },
 };

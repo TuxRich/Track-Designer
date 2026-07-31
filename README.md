@@ -99,7 +99,17 @@ Or drop a JSON file in `gates/` yourself and restart the server:
 - A `banner` is a wide solid board (sponsor/club sign) you fly *over* — its
   arrow arcs over the top edge. `innerSize` is the width, `depth` the panel
   height, `defaultHeight` the bottom height (0 = on the floor, higher raises
-  it on side posts).
+  it on side posts). An optional `image` field names an artwork file in the
+  `banners/` directory (see below) to display on the panel.
+
+### Banner artwork
+
+Drop image files (`.jpg/.jpeg/.png/.webp/.gif`) into the `banners/` directory.
+When you create a banner in the New-gate form, an "Image" picker lists them and
+the chosen artwork is stretched across the panel. The server lists them at
+`GET /api/banners` and serves them from `/banners/<file>`. Like `gates/`, this
+folder is read from disk at runtime (not embedded), so it must ship alongside
+the binary; override its location with `-banners <dir>`.
 - A `table` is a solid prop (tabletop on legs) — `innerSize` is its width,
   `depth` its depth, `defaultHeight` its height. Tables default to props (see
   below); set `propByDefault` in `shapeFieldMeta` to change that per shape.

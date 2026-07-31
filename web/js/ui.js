@@ -269,6 +269,7 @@ export class UI {
       color: $('gate-color'),
       height: $('gate-height'),
       standColor: $('gate-stand-color'),
+      image: $('gate-image'),
     };
 
     // Shape options come from the geometry builder registry, so a new shape
@@ -279,6 +280,15 @@ export class UI {
       opt.value = s;
       opt.textContent = s;
       fields.shape.appendChild(opt);
+    }
+
+    // Banner artwork options come from the banners directory (via the server).
+    fields.image.innerHTML = '<option value="">None (plain colour)</option>';
+    for (const name of this.bannerImages || []) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      fields.image.appendChild(opt);
     }
 
     fields.name.value = '';
@@ -298,7 +308,7 @@ export class UI {
     const buildDef = () => {
       const meta = shapeFieldMeta[fields.shape.value] || shapeFieldMeta.default;
       const tube = parseFloat(fields.tube.value);
-      return {
+      const def = {
         id: slug(),
         name: fields.name.value.trim(),
         shape: fields.shape.value,
@@ -309,13 +319,20 @@ export class UI {
         defaultHeight: meta.showHeight ? parseFloat(fields.height.value) : 0,
         stand: { type: 'legs', color: fields.standColor.value },
       };
+      if (meta.showImage && fields.image.value) def.image = fields.image.value;
+      return def;
     };
 
     const refreshPreview = () => {
       const def = buildDef();
       const preview = $('gate-preview');
       preview.innerHTML = '';
-      if (def.innerSize > 0 && def.tubeWidth > 0) {
+      if (def.image) {
+        const img = document.createElement('img');
+        img.src = `/banners/${encodeURIComponent(def.image)}`;
+        img.alt = def.image;
+        preview.appendChild(img);
+      } else if (def.innerSize > 0 && def.tubeWidth > 0) {
         preview.appendChild(makeThumbnail(def, 64));
       }
       $('gate-file-hint').textContent = `gates/${def.id}.json`;
@@ -338,6 +355,7 @@ export class UI {
       toggleRow('gate-depth-label', fields.depth, meta.showDepth);
       toggleRow('gate-height-label', fields.height, meta.showHeight);
       toggleRow('gate-stand-label', fields.standColor, meta.showLegs);
+      toggleRow('gate-image-label', fields.image, !!meta.showImage);
       fields.inner.value = String(meta.defaults.inner);
       fields.tube.value = String(meta.defaults.tube);
       if (meta.defaults.depth !== undefined) fields.depth.value = String(meta.defaults.depth);

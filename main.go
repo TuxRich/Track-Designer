@@ -18,6 +18,7 @@ func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	gatesDir := flag.String("gates", "gates", "directory containing gate type definitions (*.json)")
 	tracksDir := flag.String("tracks", "data/tracks", "directory for saved tracks")
+	bannersDir := flag.String("banners", "banners", "directory of banner artwork images")
 	dev := flag.Bool("dev", false, "serve the frontend from ./web on disk instead of the embedded copy")
 	flag.Parse()
 
@@ -31,6 +32,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("initialising track store: %v", err)
 	}
+
+	banners := server.NewBanners(*bannersDir)
 
 	var static fs.FS
 	if *dev {
@@ -51,6 +54,8 @@ func main() {
 	mux.HandleFunc("GET /api/tracks/{id}", tracks.HandleGet)
 	mux.HandleFunc("PUT /api/tracks/{id}", tracks.HandleUpdate)
 	mux.HandleFunc("DELETE /api/tracks/{id}", tracks.HandleDelete)
+	mux.HandleFunc("GET /api/banners", banners.HandleList)
+	mux.Handle("GET /banners/", banners.FileServer())
 	files := http.FileServerFS(static)
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Revalidate on every request so frontend updates are picked up
