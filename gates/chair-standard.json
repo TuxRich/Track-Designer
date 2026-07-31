@@ -1,0 +1,11 @@
+{
+  "id": "chair-standard",
+  "name": "Chair",
+  "shape": "chair",
+  "innerSize": 0.45,
+  "tubeWidth": 0.04,
+  "depth": 0.45,
+  "color": "#8a5a2b",
+  "defaultHeight": 0.45,
+  "stand": { "type": "legs", "color": "#5a3a1a" }
+}

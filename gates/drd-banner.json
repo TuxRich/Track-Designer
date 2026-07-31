@@ -1,0 +1,15 @@
+{
+  "id": "drd-banner",
+  "name": "drd banner",
+  "shape": "banner",
+  "innerSize": 2,
+  "tubeWidth": 0.03,
+  "depth": 0.6,
+  "color": "#ff6a00",
+  "defaultHeight": 0,
+  "image": "DRD.jpg",
+  "stand": {
+    "type": "legs",
+    "color": "#333333"
+  }
+}

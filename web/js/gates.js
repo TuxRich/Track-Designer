@@ -163,6 +163,21 @@ export const shapeBuilders = {
     return g;
   },
 
+  // A chair: a floor prop like the table (seat on legs, plus a backrest).
+  // innerSize is the seat width, depth its depth, defaultHeight the seat
+  // height. Body (re)built by setTableHeight; furniture, so non-directional.
+  chair(def) {
+    const g = new THREE.Group();
+    const body = new THREE.Group();
+    body.name = 'tableBody';
+    g.add(body);
+    g.userData.isTable = true; // floor prop: sits on the floor, height editable
+    g.userData.frameHeight = def.defaultHeight || 0.45;
+    g.userData.directional = false; // furniture — no fly-through arrow
+    g.userData.pickSize = { w: def.innerSize, h: def.defaultHeight || 0.45 };
+    return g;
+  },
+
   // A wide solid banner/hoarding (sponsor or club board) you fly OVER, not
   // through. innerSize is the width, depth the panel height, tubeWidth the
   // border/panel thickness. Uses the standard mount-height mechanic so it can
@@ -209,24 +224,27 @@ export const shapeBuilders = {
   },
 };
 
-// Fills a table's body group with a tabletop slab and four legs sized to
-// `def` at table height `H`. Applied at build time and whenever the height
-// changes.
+function ghostable(mat, ghost) {
+  if (ghost) {
+    mat.transparent = true;
+    mat.opacity = 0.45;
+    mat.depthWrite = false;
+  }
+  return mat;
+}
+
+// Fills a floor prop's body group (tabletop/seat, legs, etc.) sized to `def`
+// at height `H`. Applied at build time and whenever the height changes.
+// Dispatches on shape so tables and chairs share the same height mechanic.
 function buildTableMeshes(body, def, H, ghost) {
+  if (def.shape === 'chair') return buildChairMeshes(body, def, H, ghost);
+
   const W = def.innerSize;
   const D = def.depth || def.innerSize;
   const t = Math.max(0.02, def.tubeWidth || 0.05);
-  const style = (mat) => {
-    if (ghost) {
-      mat.transparent = true;
-      mat.opacity = 0.45;
-      mat.depthWrite = false;
-    }
-    return mat;
-  };
-  const topMat = style(frameMaterial(def));
+  const topMat = ghostable(frameMaterial(def), ghost);
   const legColor = new THREE.Color(def.stand?.color || '#5a3a1a');
-  const legMat = style(new THREE.MeshStandardMaterial({ color: legColor, roughness: 0.85 }));
+  const legMat = ghostable(new THREE.MeshStandardMaterial({ color: legColor, roughness: 0.85 }), ghost);
 
   const top = new THREE.Mesh(new THREE.BoxGeometry(W, t, D), topMat);
   top.position.y = H - t / 2;
@@ -244,6 +262,41 @@ function buildTableMeshes(body, def, H, ghost) {
       body.add(leg);
     }
   }
+}
+
+// A chair: seat slab on four legs, with two back posts and an upper back
+// panel at the rear (-Z) edge. `H` is the seat height.
+function buildChairMeshes(body, def, H, ghost) {
+  const W = def.innerSize;
+  const D = def.depth || def.innerSize;
+  const t = Math.max(0.02, def.tubeWidth || 0.04);
+  const seatMat = ghostable(frameMaterial(def), ghost);
+  const frameColor = new THREE.Color(def.stand?.color || '#5a3a1a');
+  const frameMat = ghostable(new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.85 }), ghost);
+  const add = (geo, mat, x, y, z) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = !ghost;
+    body.add(m);
+    return m;
+  };
+
+  add(new THREE.BoxGeometry(W, t, D), seatMat, 0, H - t / 2, 0).receiveShadow = !ghost;
+
+  const legH = Math.max(0.02, H - t);
+  const inset = t / 2 + 0.03;
+  const xEdge = W / 2 - inset;
+  const zEdge = D / 2 - inset;
+  for (const sx of [-xEdge, xEdge]) {
+    for (const sz of [-zEdge, zEdge]) add(new THREE.BoxGeometry(t, legH, t), frameMat, sx, legH / 2, sz);
+  }
+
+  // Backrest at the rear edge: two posts plus an upper panel.
+  const backRise = Math.max(0.35, H);
+  const zBack = -zEdge;
+  for (const sx of [-xEdge, xEdge]) add(new THREE.BoxGeometry(t, backRise, t), frameMat, sx, H + backRise / 2, zBack);
+  const panelH = backRise * 0.55;
+  add(new THREE.BoxGeometry(W - 2 * inset, panelH, t * 0.8), seatMat, 0, H + backRise - panelH / 2 - 0.03, zBack);
 }
 
 // Sets a table's height, rebuilding its body. Unlike setGateHeight (which
@@ -318,6 +371,18 @@ export const shapeFieldMeta = {
     // Tables are usually props to stand gates on, so default to "not a gate".
     propByDefault: true,
     defaults: { inner: 1.2, tube: 0.05, depth: 0.6, height: 0.7 },
+  },
+  chair: {
+    inner: 'Seat width (m)',
+    tube: 'Frame thickness (m)',
+    depthLabel: 'Seat depth (m)',
+    heightLabel: 'Seat height (m)',
+    legsLabel: 'Frame colour',
+    showDepth: true,
+    showHeight: true,
+    showLegs: true,
+    propByDefault: true, // furniture prop, not a gate
+    defaults: { inner: 0.45, tube: 0.04, depth: 0.45, height: 0.45 },
   },
   banner: {
     inner: 'Width (m)',
@@ -536,6 +601,22 @@ export const thumbnailDrawers = {
     ctx.fillRect(m, y, s - 2 * m, h); // solid (blocked) panel
     ctx.strokeStyle = '#1a1a1a';
     ctx.strokeRect(m, y, s - 2 * m, h);
+  },
+  chair(ctx, s, lw) {
+    ctx.lineWidth = Math.max(2, lw * 0.6);
+    const m = ctx.lineWidth + 2;
+    const seatY = s * 0.56;
+    const backX = s - m - 3;
+    ctx.beginPath();
+    ctx.moveTo(m, seatY); // seat
+    ctx.lineTo(backX, seatY);
+    ctx.moveTo(backX, seatY); // backrest
+    ctx.lineTo(backX, m);
+    ctx.moveTo(m + 2, seatY); // front leg
+    ctx.lineTo(m + 2, s - m);
+    ctx.moveTo(backX, seatY); // back leg
+    ctx.lineTo(backX, s - m);
+    ctx.stroke();
   },
 };
 

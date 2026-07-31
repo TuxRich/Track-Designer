@@ -93,9 +93,13 @@ Or drop a JSON file in `gates/` yourself and restart the server:
 }
 ```
 
-- `shape` — `square`, `hex`, `circle`, `cube`, `pole`, `table`, or `banner`.
-  New shape families are added in `web/js/gates.js` (`shapeBuilders` registry,
-  one function per shape, plus optional form labels in `shapeFieldMeta`).
+- `shape` — `square`, `hex`, `circle`, `cube`, `pole`, `table`, `chair`, or
+  `banner`. New shape families are added in `web/js/gates.js` (`shapeBuilders`
+  registry, one function per shape, plus optional form labels in
+  `shapeFieldMeta`).
+- A `chair` is a floor prop (seat on legs with a backrest): `innerSize` = seat
+  width, `depth` = seat depth, `defaultHeight` = seat height. Like tables, it
+  defaults to a prop.
 - A `banner` is a wide solid board (sponsor/club sign) you fly *over* — its
   arrow arcs over the top edge. `innerSize` is the width, `depth` the panel
   height, `defaultHeight` the bottom height (0 = on the floor, higher raises
