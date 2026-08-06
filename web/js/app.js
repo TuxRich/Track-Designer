@@ -69,35 +69,90 @@ function loadTrackData(data) {
   measure.loadFrom(data?.measurements);
 }
 
+// Password for the currently-loaded protected track, remembered for this
+// session so you only type it once per track.
+let currentPassword = '';
+let currentProtected = false;
+
+// Overwrite the loaded track, prompting for its password if the server says
+// it's protected (the track's own password or the admin one both work).
 async function saveTrack() {
   const name = $('track-name').value.trim() || 'Untitled track';
+  if (!currentTrackId) return saveTrackAs(); // nothing loaded — save as new
   try {
-    if (currentTrackId) {
-      await api.updateTrack(currentTrackId, name, trackData());
-    } else {
-      const t = await api.createTrack(name, trackData());
-      currentTrackId = t.id;
+    await api.updateTrack(currentTrackId, name, trackData(), currentPassword);
+    ui.toast(`Saved "${name}"`);
+    return;
+  } catch (err) {
+    if (err.status !== 403) {
+      ui.toast(`Save failed: ${err.message}`, true);
+      return;
     }
+  }
+  // Protected: ask for the password and retry once.
+  const pw = await ui.askPassword(`"${name}" is password-protected. Enter its password (or the admin password) to overwrite it — or cancel and use Save As.`);
+  if (pw === null) return;
+  try {
+    await api.updateTrack(currentTrackId, name, trackData(), pw);
+    currentPassword = pw; // remember for later saves this session
     ui.toast(`Saved "${name}"`);
   } catch (err) {
-    ui.toast(`Save failed: ${err.message}`, true);
+    ui.toast(err.status === 403 ? 'Wrong password — track not saved.' : `Save failed: ${err.message}`, true);
   }
+}
+
+// Always create a new track, optionally protected with a password.
+function saveTrackAs() {
+  ui.openSaveDialog($('track-name').value.trim(), async ({ name, password }) => {
+    try {
+      const t = await api.createTrack(name, trackData(), password);
+      currentTrackId = t.id;
+      currentPassword = password || '';
+      currentProtected = !!t.protected;
+      $('track-name').value = name;
+      ui.toast(`Saved "${name}"${password ? ' (password protected)' : ''}`);
+    } catch (err) {
+      ui.toast(`Save failed: ${err.message}`, true);
+    }
+  });
 }
 
 async function loadTrack(id) {
   try {
     const t = await api.getTrack(id);
     currentTrackId = t.id;
+    currentPassword = '';
+    currentProtected = !!t.protected;
     $('track-name').value = t.name;
     loadTrackData(t.data);
-    ui.toast(`Loaded "${t.name}"`);
+    ui.toast(`Loaded "${t.name}"${t.protected ? ' 🔒 (protected — Save As to keep your own copy)' : ''}`);
   } catch (err) {
     ui.toast(`Load failed: ${err.message}`, true);
   }
 }
 
+// Delete a track, prompting for a password if it's protected. Returns true
+// when it was actually removed.
+async function deleteTrack(t) {
+  const pw = t.protected
+    ? await ui.askPassword(`"${t.name}" is password-protected. Enter its password (or the admin password) to delete it.`)
+    : '';
+  if (pw === null) return false;
+  try {
+    await api.deleteTrack(t.id, pw);
+    if (t.id === currentTrackId) currentTrackId = null;
+    ui.toast(`Deleted "${t.name}"`);
+    return true;
+  } catch (err) {
+    ui.toast(err.status === 403 ? 'Wrong password — track not deleted.' : `Delete failed: ${err.message}`, true);
+    return false;
+  }
+}
+
 function newTrack() {
   currentTrackId = null;
+  currentPassword = '';
+  currentProtected = false;
   $('track-name').value = '';
   editor.clearAll();
   measure.clearAll();
@@ -111,17 +166,12 @@ $('btn-new').addEventListener('click', () => {
 });
 
 $('btn-save').addEventListener('click', saveTrack);
+$('btn-saveas').addEventListener('click', saveTrackAs);
 
 $('btn-load').addEventListener('click', async () => {
   try {
     const tracks = await api.listTracks();
-    ui.openLoadDialog(tracks, {
-      onLoad: loadTrack,
-      onDelete: async (id) => {
-        await api.deleteTrack(id);
-        if (id === currentTrackId) currentTrackId = null;
-      },
-    });
+    ui.openLoadDialog(tracks, { onLoad: loadTrack, onDelete: deleteTrack });
   } catch (err) {
     ui.toast(`Could not list tracks: ${err.message}`, true);
   }

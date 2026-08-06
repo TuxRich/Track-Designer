@@ -231,10 +231,54 @@ export class UI {
     $('load-cancel').addEventListener('click', () => this.closeDialogs());
     $('help-close').addEventListener('click', () => this.closeDialogs());
     $('share-close').addEventListener('click', () => this.closeDialogs());
+    $('save-cancel').addEventListener('click', () => this.closeDialogs());
+    $('password-cancel').addEventListener('click', () => this.closeDialogs());
     $('btn-help').addEventListener('click', () => this.openDialog('dlg-help'));
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.closeDialogs();
     });
+  }
+
+  // Dialog to save the current design as a new track, with an optional
+  // password. Calls onSave({ name, password }).
+  openSaveDialog(currentName, onSave) {
+    $('save-name').value = currentName || '';
+    $('save-password').value = '';
+    this.openDialog('dlg-save');
+    $('save-name').focus();
+    $('save-name').select();
+    $('save-confirm').onclick = () => {
+      const name = $('save-name').value.trim() || 'Untitled track';
+      const password = $('save-password').value;
+      this.closeDialogs();
+      onSave({ name, password });
+    };
+  }
+
+  // Prompt for a password (to edit/delete a protected track, or the admin
+  // password). Resolves to the entered string, or null if dismissed (Cancel,
+  // Esc, or clicking outside — all routed through closeDialogs).
+  askPassword(message) {
+    return new Promise((resolve) => {
+      $('password-msg').textContent = message;
+      $('password-input').value = '';
+      $('password-error').textContent = '';
+      this.openDialog('dlg-password');
+      $('password-input').focus();
+      this._passwordResolve = resolve;
+      const submit = () => this._submitPassword($('password-input').value);
+      $('password-ok').onclick = submit;
+      $('password-input').onkeydown = (e) => {
+        if (e.key === 'Enter') submit();
+      };
+    });
+  }
+
+  _submitPassword(value) {
+    const resolve = this._passwordResolve;
+    this._passwordResolve = null;
+    this.closeDialogs();
+    resolve?.(value);
   }
 
   openDialog(id) {
@@ -246,6 +290,12 @@ export class UI {
 
   closeDialogs() {
     this.overlay.classList.add('hidden');
+    // A password prompt dismissed by Esc/outside-click resolves as cancelled.
+    if (this._passwordResolve) {
+      const resolve = this._passwordResolve;
+      this._passwordResolve = null;
+      resolve(null);
+    }
   }
 
   get dialogOpen() {
@@ -441,7 +491,11 @@ export class UI {
       row.className = 'track-row';
       const title = document.createElement('span');
       title.className = 'track-title';
-      title.textContent = t.name || '(untitled)';
+      // A padlock marks tracks that need a password to edit or delete.
+      title.textContent = `${t.protected ? '🔒 ' : ''}${t.name || '(untitled)'}`;
+      title.title = t.protected
+        ? 'Password-protected — anyone can load it, but editing or deleting needs the password'
+        : 'Load this track';
       title.addEventListener('click', () => {
         this.closeDialogs();
         onLoad(t.id);
@@ -455,8 +509,7 @@ export class UI {
       del.title = 'Delete this track';
       del.addEventListener('click', async () => {
         if (!confirm(`Delete track "${t.name}"? This cannot be undone.`)) return;
-        await onDelete(t.id);
-        row.remove();
+        if (await onDelete(t)) row.remove();
       });
       row.append(title, date, del);
       list.appendChild(row);

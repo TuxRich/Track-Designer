@@ -97,6 +97,7 @@ html, body {
 body.view-only #sidebar,
 body.view-only #btn-new,
 body.view-only #btn-save,
+body.view-only #btn-saveas,
 body.view-only #btn-load,
 body.view-only #btn-share,
 body.view-only #btn-arena { display: none; }

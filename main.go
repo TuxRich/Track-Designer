@@ -19,6 +19,8 @@ func main() {
 	gatesDir := flag.String("gates", "gates", "directory containing gate type definitions (*.json)")
 	tracksDir := flag.String("tracks", "data/tracks", "directory for saved tracks")
 	bannersDir := flag.String("banners", "banners", "directory of banner artwork images")
+	adminPassword := flag.String("admin-password", os.Getenv("TRACK_ADMIN_PASSWORD"),
+		"master password to edit/delete any track (defaults to $TRACK_ADMIN_PASSWORD)")
 	dev := flag.Bool("dev", false, "serve the frontend from ./web on disk instead of the embedded copy")
 	flag.Parse()
 
@@ -28,9 +30,12 @@ func main() {
 	}
 	log.Printf("loaded %d gate types from %s", len(gates.Types), *gatesDir)
 
-	tracks, err := server.NewTrackStore(*tracksDir)
+	tracks, err := server.NewTrackStore(*tracksDir, *adminPassword)
 	if err != nil {
 		log.Fatalf("initialising track store: %v", err)
+	}
+	if *adminPassword != "" {
+		log.Print("admin master password is set")
 	}
 
 	banners := server.NewBanners(*bannersDir)

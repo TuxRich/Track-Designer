@@ -20,6 +20,7 @@
   <input id="track-name" type="text" placeholder="Untitled track" spellcheck="false">
   <button id="btn-new" title="Start a new empty track">New</button>
   <button id="btn-save" title="Save track to server (Ctrl+S)">Save</button>
+  <button id="btn-saveas" title="Save the current design as a new track">Save As</button>
   <button id="btn-load" title="Load a saved track">Load</button>
   <button id="btn-share" title="Copy a view-only link to this track">🔗 Share</button>
   <span class="toolbar-sep"></span>
@@ -119,6 +120,32 @@
     </div>
   </div>
 
+  <div id="dlg-save" class="dialog hidden">
+    <h2 id="save-title">Save as new track</h2>
+    <div class="prop-grid">
+      <label>Name</label><input id="save-name" type="text" spellcheck="false">
+      <label>Password</label><input id="save-password" type="password" placeholder="optional" autocomplete="new-password">
+    </div>
+    <p class="hint">Set a password to stop others editing or deleting this track. Leave it blank to keep it open. Anyone can still load it and save their own copy.</p>
+    <div class="dialog-actions">
+      <button id="save-cancel">Cancel</button>
+      <button id="save-confirm" class="primary">Save</button>
+    </div>
+  </div>
+
+  <div id="dlg-password" class="dialog hidden">
+    <h2>Password required</h2>
+    <p class="hint" id="password-msg"></p>
+    <div class="prop-grid">
+      <label>Password</label><input id="password-input" type="password" autocomplete="off">
+    </div>
+    <p id="password-error" class="hint error"></p>
+    <div class="dialog-actions">
+      <button id="password-cancel">Cancel</button>
+      <button id="password-ok" class="primary">OK</button>
+    </div>
+  </div>
+
   <div id="dlg-share" class="dialog hidden">
     <h2>Share view-only link</h2>
     <p class="hint">Anyone with this link can view the track and add their own measurements, but cannot move, add, or delete gates, and cannot save changes.</p>
@@ -157,6 +184,7 @@
       <tr><td>➤</td><td>Show / hide flight direction arrows. Set a gate's direction in its panel — ⇄ Reverse for flat gates; cubes have "In through" / "Out through" faces and show two arrows when the route bends (e.g. in the top, out the front)</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>Finish measuring / cancel placement / deselect</td></tr>
       <tr><td><kbd>Ctrl+S</kbd></td><td>Save track</td></tr>
+      <tr><td>🔒 Passwords</td><td>Save As can set a password. Protected tracks (🔒 in the Load list) can be loaded by anyone, but editing or deleting one needs its password. Use Save As to keep your own copy instead.</td></tr>
       <tr><td>🔗 Share</td><td>Copy a view-only link (recipients can measure but not change gates)</td></tr>
     </table>
     <p class="hint">Measurement clicks on a gate snap to its spot on the floor — the distance you'd tape out when building the track. Shift-click a gate to measure from its opening centre instead. Coordinates are metres from the arena corner.</p>

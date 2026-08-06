@@ -2,6 +2,8 @@ package server
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,40 +14,64 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
-// Track is stored verbatim as JSON on disk. The server only cares about the
-// identifying fields; Data holds the full document the frontend round-trips
-// (arena size, gates, measurements, ...).
+// Track is stored verbatim as JSON on disk. Data holds the full document the
+// frontend round-trips (arena size, gates, measurements, ...). PasswordHash,
+// when set, protects the track: editing or deleting it requires the password
+// (or the admin password). The hash is never sent to clients.
 type Track struct {
-	ID      string          `json:"id"`
-	Name    string          `json:"name"`
-	Updated time.Time       `json:"updated"`
-	Data    json.RawMessage `json:"data"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Updated      time.Time       `json:"updated"`
+	Data         json.RawMessage `json:"data"`
+	PasswordHash string          `json:"passwordHash,omitempty"`
+}
+
+// trackResponse is the client-facing shape — it exposes whether a track is
+// protected but never the password hash.
+type trackResponse struct {
+	ID        string          `json:"id"`
+	Name      string          `json:"name"`
+	Updated   time.Time       `json:"updated"`
+	Data      json.RawMessage `json:"data,omitempty"`
+	Protected bool            `json:"protected"`
+}
+
+func (t *Track) response(includeData bool) trackResponse {
+	r := trackResponse{ID: t.ID, Name: t.Name, Updated: t.Updated, Protected: t.PasswordHash != ""}
+	if includeData {
+		r.Data = t.Data
+	}
+	return r
 }
 
 // TrackSummary is what the list endpoint returns.
 type TrackSummary struct {
-	ID      string    `json:"id"`
-	Name    string    `json:"name"`
-	Updated time.Time `json:"updated"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Updated   time.Time `json:"updated"`
+	Protected bool      `json:"protected"`
 }
 
 // TrackStore persists tracks as individual JSON files in a directory.
 type TrackStore struct {
-	dir string
-	mu  sync.Mutex
+	dir           string
+	adminPassword string // master password; empty disables admin override
+	mu            sync.Mutex
 }
 
 var validID = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
-func NewTrackStore(dir string) (*TrackStore, error) {
+func NewTrackStore(dir, adminPassword string) (*TrackStore, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
-	return &TrackStore{dir: dir}, nil
+	return &TrackStore{dir: dir, adminPassword: adminPassword}, nil
 }
 
 func (s *TrackStore) path(id string) string {
@@ -80,6 +106,62 @@ func newID() string {
 	return hex.EncodeToString(b)
 }
 
+// ---------- password hashing (stdlib: salted, stretched SHA-256) ----------
+
+const pwIterations = 100000
+
+func stretch(pw string, salt []byte, iters int) []byte {
+	h := sha256.Sum256(append(append([]byte{}, salt...), []byte(pw)...))
+	out := h[:]
+	for i := 0; i < iters; i++ {
+		next := sha256.Sum256(append(append([]byte{}, out...), salt...))
+		out = next[:]
+	}
+	return out
+}
+
+func hashPassword(pw string) string {
+	salt := make([]byte, 16)
+	_, _ = rand.Read(salt)
+	h := stretch(pw, salt, pwIterations)
+	return fmt.Sprintf("%d$%s$%s", pwIterations, hex.EncodeToString(salt), hex.EncodeToString(h))
+}
+
+func verifyPassword(pw, stored string) bool {
+	parts := strings.SplitN(stored, "$", 3)
+	if len(parts) != 3 {
+		return false
+	}
+	iters, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false
+	}
+	salt, err := hex.DecodeString(parts[1])
+	if err != nil {
+		return false
+	}
+	want, err := hex.DecodeString(parts[2])
+	if err != nil {
+		return false
+	}
+	return subtle.ConstantTimeCompare(stretch(pw, salt, iters), want) == 1
+}
+
+// authorize reports whether `provided` (the X-Track-Password header) may edit
+// or delete `t`. Unprotected tracks are always editable; the admin password
+// overrides any track password.
+func (s *TrackStore) authorize(t *Track, provided string) bool {
+	if t.PasswordHash == "" {
+		return true
+	}
+	if s.adminPassword != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(s.adminPassword)) == 1 {
+		return true
+	}
+	return provided != "" && verifyPassword(provided, t.PasswordHash)
+}
+
+// ---------- handlers ----------
+
 func (s *TrackStore) HandleList(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -96,16 +178,19 @@ func (s *TrackStore) HandleList(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue // skip unreadable files rather than failing the whole list
 		}
-		summaries = append(summaries, TrackSummary{ID: t.ID, Name: t.Name, Updated: t.Updated})
+		summaries = append(summaries, TrackSummary{ID: t.ID, Name: t.Name, Updated: t.Updated, Protected: t.PasswordHash != ""})
 	}
 	sort.Slice(summaries, func(i, j int) bool { return summaries[i].Updated.After(summaries[j].Updated) })
 	writeJSON(w, http.StatusOK, summaries)
 }
 
+// HandleCreate makes a new track. Anyone may create one; an optional password
+// protects it against later edits/deletes.
 func (s *TrackStore) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		Name string          `json:"name"`
-		Data json.RawMessage `json:"data"`
+		Name     string          `json:"name"`
+		Data     json.RawMessage `json:"data"`
+		Password string          `json:"password"`
 	}
 	if err := decodeBody(r, &in); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -115,13 +200,16 @@ func (s *TrackStore) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		in.Name = "Untitled track"
 	}
 	t := &Track{ID: newID(), Name: in.Name, Updated: time.Now().UTC(), Data: in.Data}
+	if in.Password != "" {
+		t.PasswordHash = hashPassword(in.Password)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.save(t); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusCreated, t)
+	writeJSON(w, http.StatusCreated, t.response(false))
 }
 
 func (s *TrackStore) HandleGet(w http.ResponseWriter, r *http.Request) {
@@ -141,9 +229,12 @@ func (s *TrackStore) HandleGet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, t)
+	writeJSON(w, http.StatusOK, t.response(true))
 }
 
+// HandleUpdate overwrites an existing track. If it is protected, the request
+// must carry the matching password (or the admin password) in the
+// X-Track-Password header. Protection is preserved across updates.
 func (s *TrackStore) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !validID.MatchString(id) {
@@ -160,16 +251,25 @@ func (s *TrackStore) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := s.load(id); errors.Is(err, os.ErrNotExist) {
+	existing, err := s.load(id)
+	if errors.Is(err, os.ErrNotExist) {
 		writeError(w, http.StatusNotFound, "track not found")
 		return
 	}
-	t := &Track{ID: id, Name: in.Name, Updated: time.Now().UTC(), Data: in.Data}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !s.authorize(existing, r.Header.Get("X-Track-Password")) {
+		writeError(w, http.StatusForbidden, "wrong password")
+		return
+	}
+	t := &Track{ID: id, Name: in.Name, Updated: time.Now().UTC(), Data: in.Data, PasswordHash: existing.PasswordHash}
 	if err := s.save(t); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, t)
+	writeJSON(w, http.StatusOK, t.response(false))
 }
 
 func (s *TrackStore) HandleDelete(w http.ResponseWriter, r *http.Request) {
@@ -180,10 +280,20 @@ func (s *TrackStore) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := os.Remove(s.path(id)); errors.Is(err, os.ErrNotExist) {
+	existing, err := s.load(id)
+	if errors.Is(err, os.ErrNotExist) {
 		writeError(w, http.StatusNotFound, "track not found")
 		return
-	} else if err != nil {
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !s.authorize(existing, r.Header.Get("X-Track-Password")) {
+		writeError(w, http.StatusForbidden, "wrong password")
+		return
+	}
+	if err := os.Remove(s.path(id)); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

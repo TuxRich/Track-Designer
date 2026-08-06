@@ -68,6 +68,14 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   minor and 1 m major lines with meter numbers along two edges; coordinates
   are meters from the arena corner.
 - **Save / Load** — tracks are stored server-side as JSON in `data/tracks/`.
+- **Passwords** — **Save As** creates a new track and can set a password on it.
+  Anyone can load a protected track (🔒 in the Load list) and use **Save As**
+  to keep their own copy, but overwriting or deleting the original requires its
+  password. Passwords are stored salted and stretched (never in plain text) and
+  are never sent to clients; the server enforces this on every write.
+- **Admin master password** — start the server with `-admin-password <pw>` (or
+  set `TRACK_ADMIN_PASSWORD`) to be able to edit or delete any track without
+  knowing its password. Enter it wherever a track password is asked for.
 - **Share** — 🔗 Share copies a view-only link (`?view=<id>`) to a saved
   track. Recipients can orbit, measure, and screenshot, but cannot move, add,
   or delete gates, and cannot save changes. Save the track first so it has an
