@@ -1,0 +1,14 @@
+{
+  "id": "square-gate-0-6m",
+  "name": "Square Gate 0.6m",
+  "shape": "square",
+  "innerSize": 0.6,
+  "tubeWidth": 0.04,
+  "depth": 0.03,
+  "color": "#c5a402",
+  "defaultHeight": 0,
+  "stand": {
+    "type": "legs",
+    "color": "#333333"
+  }
+}
