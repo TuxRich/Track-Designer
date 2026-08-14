@@ -1,0 +1,15 @@
+{
+  "id": "devon-banner",
+  "name": "Devon banner",
+  "shape": "banner",
+  "innerSize": 1.5,
+  "tubeWidth": 0.03,
+  "depth": 0.8,
+  "color": "#ff6a00",
+  "defaultHeight": 0,
+  "image": "Flag Devon.jpg",
+  "stand": {
+    "type": "legs",
+    "color": "#ededed"
+  }
+}

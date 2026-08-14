@@ -1,0 +1,1133 @@
+{
+ "gates": [
+  {
+   "id": "1-2m-banner",
+   "name": "1.2m banner",
+   "shape": "banner",
+   "innerSize": 1.2,
+   "tubeWidth": 0.03,
+   "depth": 0.6,
+   "color": "#10942a",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "banner-200",
+   "name": "Banner 2m",
+   "shape": "banner",
+   "innerSize": 2,
+   "tubeWidth": 0.03,
+   "depth": 0.6,
+   "color": "#1565c0",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "big-hoop-1m",
+   "name": "Big Hoop 1m",
+   "shape": "circle",
+   "innerSize": 1,
+   "tubeWidth": 0.05,
+   "depth": 0.03,
+   "color": "#e040fb",
+   "defaultHeight": 0.5,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "chair-standard",
+   "name": "Chair",
+   "shape": "chair",
+   "innerSize": 0.45,
+   "tubeWidth": 0.04,
+   "depth": 0.45,
+   "color": "#8a5a2b",
+   "defaultHeight": 0.45,
+   "stand": {
+    "type": "legs",
+    "color": "#5a3a1a"
+   }
+  },
+  {
+   "id": "devon-banner",
+   "name": "Devon banner",
+   "shape": "banner",
+   "innerSize": 1.5,
+   "tubeWidth": 0.03,
+   "depth": 0.8,
+   "color": "#ff6a00",
+   "defaultHeight": 0,
+   "image": "Flag Devon.jpg",
+   "stand": {
+    "type": "legs",
+    "color": "#ededed"
+   }
+  },
+  {
+   "id": "gemfan-cube-gate",
+   "name": "GEMFAN Cube Gate",
+   "shape": "cube",
+   "innerSize": 0.8,
+   "tubeWidth": 0.08,
+   "depth": 0.08,
+   "color": "#808080",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "pole-150",
+   "name": "Pole 1.5m",
+   "shape": "pole",
+   "innerSize": 1.5,
+   "tubeWidth": 0.03,
+   "depth": 0.03,
+   "color": "#e5484d",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "square-gate-0-6m",
+   "name": "Square Gate 0.6m",
+   "shape": "square",
+   "innerSize": 0.6,
+   "tubeWidth": 0.04,
+   "depth": 0.03,
+   "color": "#c5a402",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "square-75",
+   "name": "Square Gate 0.75m",
+   "shape": "square",
+   "innerSize": 0.75,
+   "tubeWidth": 0.05,
+   "depth": 0.04,
+   "color": "#ffd400",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "table-120",
+   "name": "Table 1.2\u00d70.6m",
+   "shape": "table",
+   "innerSize": 1.2,
+   "tubeWidth": 0.05,
+   "depth": 0.6,
+   "color": "#8a5a2b",
+   "defaultHeight": 0.7,
+   "stand": {
+    "type": "legs",
+    "color": "#5a3a1a"
+   }
+  },
+  {
+   "id": "tall-pole-2m",
+   "name": "Tall Pole 2m",
+   "shape": "pole",
+   "innerSize": 2,
+   "tubeWidth": 0.03,
+   "depth": 0.03,
+   "color": "#2979ff",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "tinywhoop-cube",
+   "name": "Tinywhoop Cube",
+   "shape": "cube",
+   "innerSize": 0.75,
+   "tubeWidth": 0.08,
+   "depth": 0.08,
+   "color": "#ff6a00",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "whoop-cube-50",
+   "name": "Whoop Cube Gate 0.5m",
+   "shape": "cube",
+   "innerSize": 0.5,
+   "tubeWidth": 0.03,
+   "depth": 0.03,
+   "color": "#b26bff",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "whoop-hex-50",
+   "name": "Whoop Hex Gate 0.5m",
+   "shape": "hex",
+   "innerSize": 0.5,
+   "tubeWidth": 0.04,
+   "depth": 0.03,
+   "color": "#00c2ff",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "whoop-hoop-50",
+   "name": "Whoop Hoop Gate 0.5m",
+   "shape": "circle",
+   "innerSize": 0.5,
+   "tubeWidth": 0.03,
+   "depth": 0.03,
+   "color": "#7cff00",
+   "defaultHeight": 0.25,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "whoop-square-50",
+   "name": "Whoop Square Gate 0.5m",
+   "shape": "square",
+   "innerSize": 0.5,
+   "tubeWidth": 0.04,
+   "depth": 0.03,
+   "color": "#ff6a00",
+   "defaultHeight": 0,
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  },
+  {
+   "id": "menacerc-banner-1-2m",
+   "name": "menacerc banner 1.2m",
+   "shape": "banner",
+   "innerSize": 1.2,
+   "tubeWidth": 0.03,
+   "depth": 0.6,
+   "color": "#8a8a8a",
+   "defaultHeight": 0,
+   "image": "Menace-Logo.webp",
+   "stand": {
+    "type": "legs",
+    "color": "#333333"
+   }
+  }
+ ],
+ "tracks": [
+  {
+   "id": "44969e85b18ebeba",
+   "name": "Track 2 by Freshbread",
+   "updated": "2026-08-06T14:53:35.977509962Z",
+   "data": {
+    "arena": {
+     "w": 5,
+     "d": 8,
+     "h": 3
+    },
+    "gates": [
+     {
+      "typeId": "square-75",
+      "x": 4.6,
+      "z": 5,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.5,
+      "z": 7.5,
+      "height": 0,
+      "rotY": -1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 0.4,
+      "z": 5,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 0.4,
+      "z": 5,
+      "height": 0.8,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "gemfan-cube-gate",
+      "x": 1.3,
+      "z": 2.5,
+      "height": 0,
+      "rotY": 0,
+      "dir": "front>back",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 1.3,
+      "z": 5,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.5,
+      "z": 7.5,
+      "height": 0.8,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.5,
+      "z": 7.5,
+      "height": 1.6,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 1.8,
+      "z": 2,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.3,
+      "z": 2,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 3.2,
+      "z": 2,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 4.2,
+      "z": 2,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 4.6,
+      "z": 2,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     }
+    ],
+    "measurements": []
+   },
+   "protected": false
+  },
+  {
+   "id": "816a3c1edf09424f",
+   "name": "Cream First #1",
+   "updated": "2026-08-06T14:34:28.095361753Z",
+   "data": {
+    "arena": {
+     "w": 6,
+     "d": 6,
+     "h": 3
+    },
+    "gates": [
+     {
+      "typeId": "square-75",
+      "x": 0.4,
+      "z": 3.6,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.7,
+      "z": 5.6,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 2.7,
+      "z": 3.3,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.7,
+      "z": 1.1,
+      "height": 1.6,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.7,
+      "z": 1.1,
+      "height": 0.8,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.7,
+      "z": 1.1,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.7,
+      "z": 2.9,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 2.7,
+      "z": 5.2,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 5.2,
+      "z": 4.8,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 5.2,
+      "z": 4.4,
+      "height": 0,
+      "rotY": -1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 5.2,
+      "z": 3.6,
+      "height": 0,
+      "rotY": -1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 5.2,
+      "z": 2.8,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "tinywhoop-cube",
+      "x": 4.8,
+      "z": 1.9,
+      "height": 0,
+      "rotY": 0,
+      "dir": "top>right",
+      "prop": false
+     },
+     {
+      "typeId": "square-gate-0-6m",
+      "x": 2.7,
+      "z": 2.1,
+      "height": 0,
+      "rotY": -1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "devon-banner",
+      "x": 0,
+      "z": 1.1,
+      "height": 0.1,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": true
+     }
+    ],
+    "measurements": [
+     [
+      [
+       2.7,
+       0,
+       3
+      ],
+      [
+       5.2,
+       0,
+       2.989
+      ]
+     ],
+     [
+      [
+       0.4,
+       0,
+       3.6
+      ],
+      [
+       0.43,
+       0,
+       5.996
+      ]
+     ],
+     [
+      [
+       2.713,
+       0,
+       5.6
+      ],
+      [
+       0.01,
+       0,
+       5.624
+      ]
+     ],
+     [
+      [
+       2.697,
+       0,
+       0
+      ],
+      [
+       2.7,
+       0,
+       0.661
+      ]
+     ],
+     [
+      [
+       5.2,
+       0,
+       4.818
+      ],
+      [
+       5.224,
+       0,
+       6
+      ]
+     ],
+     [
+      [
+       4.8,
+       0,
+       1.463
+      ],
+      [
+       4.817,
+       0,
+       0.002
+      ]
+     ],
+     [
+      [
+       2.716,
+       0,
+       5.141
+      ],
+      [
+       2.7,
+       0,
+       3.344
+      ]
+     ]
+    ]
+   },
+   "protected": true
+  },
+  {
+   "id": "4500f3c2d3b25ad5",
+   "name": "Rich 8x6m test",
+   "updated": "2026-08-06T14:21:26.3926045Z",
+   "data": {
+    "arena": {
+     "w": 8,
+     "d": 6,
+     "h": 4
+    },
+    "gates": [
+     {
+      "typeId": "square-75",
+      "x": 1.9,
+      "z": 4.5,
+      "height": 0,
+      "rotY": 0,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 1,
+      "z": 1.6,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 2,
+      "z": 1,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 2.4,
+      "z": 1,
+      "height": 0.1,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 3.1,
+      "z": 1,
+      "height": 0.1,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 3.8,
+      "z": 1,
+      "height": 0.1,
+      "rotY": 0,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-square-50",
+      "x": 4.5,
+      "z": 2.5,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-square-50",
+      "x": 4.5,
+      "z": 2.5,
+      "height": 0.6,
+      "rotY": 1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-square-50",
+      "x": 4.5,
+      "z": 2.5,
+      "height": 1.2,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "gemfan-cube-gate",
+      "x": 6,
+      "z": 4.5,
+      "height": 0,
+      "rotY": 0,
+      "dir": "top>front",
+      "prop": false
+     },
+     {
+      "typeId": "pole-150",
+      "x": 3.5,
+      "z": 4,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "pole-150",
+      "x": 2.5,
+      "z": 5,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     }
+    ],
+    "measurements": []
+   },
+   "protected": true
+  },
+  {
+   "id": "66dcd09d99a72f6d",
+   "name": "8x6 Whoop Track \u2014 made by AI",
+   "updated": "2026-08-06T14:16:18.034423461Z",
+   "data": {
+    "arena": {
+     "w": 8,
+     "d": 6,
+     "h": 2.5
+    },
+    "gates": [
+     {
+      "typeId": "square-75",
+      "x": 1.2,
+      "z": 1,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 4.2,
+      "z": 1,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 6.8,
+      "z": 1.2,
+      "height": 1.3,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 6.8,
+      "z": 1.2,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "pole-150",
+      "x": 5,
+      "z": 1.9,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "pole-150",
+      "x": 3.4,
+      "z": 2.6,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "pole-150",
+      "x": 1.8,
+      "z": 3.3,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "gemfan-cube-gate",
+      "x": 3.8,
+      "z": 3.8,
+      "height": 0,
+      "rotY": 0,
+      "dir": "top>right",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 5.6,
+      "z": 3.8,
+      "height": 0,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 6.9,
+      "z": 3.8,
+      "height": 0.9,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 5,
+      "z": 5.2,
+      "height": 1.2,
+      "rotY": -1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 2.8,
+      "z": 5.2,
+      "height": 0,
+      "rotY": -1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 1,
+      "z": 4.2,
+      "height": 0,
+      "rotY": 3.142,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-75",
+      "x": 1,
+      "z": 2.4,
+      "height": 0,
+      "rotY": 3.142,
+      "dir": "forward",
+      "prop": false
+     }
+    ],
+    "measurements": [
+     [
+      [
+       1.2,
+       0,
+       1
+      ],
+      [
+       4.2,
+       0,
+       0.997
+      ],
+      [
+       6.8,
+       0,
+       0.994
+      ]
+     ],
+     [
+      [
+       4.2,
+       0,
+       1.435
+      ],
+      [
+       4.196,
+       0,
+       3.311
+      ]
+     ],
+     [
+      [
+       4.269,
+       0,
+       3.8
+      ],
+      [
+       5.6,
+       0,
+       3.8
+      ],
+      [
+       6.9,
+       0,
+       3.8
+      ]
+     ]
+    ]
+   },
+   "protected": true
+  },
+  {
+   "id": "fcc825e2a8eb07dd",
+   "name": "Table Flow",
+   "updated": "2026-07-31T09:30:33.582901437Z",
+   "data": {
+    "arena": {
+     "w": 10,
+     "d": 8,
+     "h": 3
+    },
+    "gates": [
+     {
+      "typeId": "whoop-hex-50",
+      "x": 9.1,
+      "z": 6.2,
+      "height": 0.8,
+      "rotY": 1.833,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 6.4,
+      "z": 7.5,
+      "height": 0.1,
+      "rotY": 1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 6.4,
+      "z": 5,
+      "height": 0.1,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 6.4,
+      "z": 6.3,
+      "height": 0.7,
+      "rotY": 1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 1.7,
+      "z": 6.3,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hoop-50",
+      "x": 2.4,
+      "z": 4.8,
+      "height": 0.05,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hoop-50",
+      "x": 2.4,
+      "z": 4.8,
+      "height": 0.65,
+      "rotY": -1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hoop-50",
+      "x": 2.4,
+      "z": 4.8,
+      "height": 1.25,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 7.7,
+      "z": 2.7,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 7.4,
+      "z": 2,
+      "height": 0.7,
+      "rotY": 1.571,
+      "dir": "back",
+      "prop": false
+     },
+     {
+      "typeId": "tall-pole-2m",
+      "x": 5.3,
+      "z": 2.2,
+      "height": 0,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-gate-0-6m",
+      "x": 3.3,
+      "z": 3.1,
+      "height": 0.1,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-gate-0-6m",
+      "x": 1.4,
+      "z": 3.1,
+      "height": 0.1,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-gate-0-6m",
+      "x": 6.5,
+      "z": 3.6,
+      "height": 0.1,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "square-gate-0-6m",
+      "x": 6.5,
+      "z": 3.6,
+      "height": 0.9,
+      "rotY": -1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "whoop-hex-50",
+      "x": 9,
+      "z": 5,
+      "height": 0.1,
+      "rotY": 1.571,
+      "dir": "forward",
+      "prop": false
+     },
+     {
+      "typeId": "table-120",
+      "x": 6.4,
+      "z": 6.3,
+      "height": 0.7,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": true
+     },
+     {
+      "typeId": "table-120",
+      "x": 7,
+      "z": 2,
+      "height": 0.7,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": true
+     },
+     {
+      "typeId": "table-120",
+      "x": 2.2,
+      "z": 6.8,
+      "height": 0.7,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": true
+     },
+     {
+      "typeId": "table-120",
+      "x": 9,
+      "z": 6.2,
+      "height": 0.7,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": true
+     },
+     {
+      "typeId": "menacerc-banner-1-2m",
+      "x": 2.354,
+      "z": 3.097,
+      "height": 0.176,
+      "rotY": 0,
+      "dir": "forward",
+      "prop": true
+     }
+    ],
+    "measurements": []
+   },
+   "protected": false
+  }
+ ]
+}

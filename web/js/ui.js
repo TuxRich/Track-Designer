@@ -233,6 +233,7 @@ export class UI {
     $('share-close').addEventListener('click', () => this.closeDialogs());
     $('save-cancel').addEventListener('click', () => this.closeDialogs());
     $('password-cancel').addEventListener('click', () => this.closeDialogs());
+    $('liftoff-cancel').addEventListener('click', () => this.closeDialogs());
     $('btn-help').addEventListener('click', () => this.openDialog('dlg-help'));
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.closeDialogs();
@@ -446,6 +447,76 @@ export class UI {
       }
     };
     this.openDialog('dlg-gate');
+  }
+
+  /**
+   * Preview and export the current design as a Liftoff race.
+   *
+   * The preview is the point of the dialog. Liftoff has no whoop-sized gates,
+   * so every gate is substituted for the nearest real prop and the layout is
+   * scaled to suit — decisions worth seeing before you fly, since a gate that
+   * comes out half the size of its neighbours reads as a bug in the air and is
+   * very hard to diagnose from inside the game.
+   *
+   * @param {function} buildPreview (scale, poleTrigger) => convert result
+   * @param {function} onDownload   (scale, poleTrigger) => void
+   */
+  openLiftoffDialog(buildPreview, onDownload) {
+    const scaleSel = $('liftoff-scale');
+    const poleInput = $('liftoff-pole');
+
+    const refresh = () => {
+      const scale = parseFloat(scaleSel.value);
+      const pole = parseFloat(poleInput.value);
+      let r;
+      try {
+        r = buildPreview(scale, Number.isFinite(pole) ? pole : undefined);
+      } catch (err) {
+        $('liftoff-warn').textContent = `Could not convert: ${err.message}`;
+        $('liftoff-summary').innerHTML = '';
+        return;
+      }
+
+      $('liftoff-arena').textContent =
+        `${r.arena[0]} × ${r.arena[1]} m, ${r.checkpoints} checkpoints`;
+      $('liftoff-warn').textContent = r.unknown.length
+        ? `Unrecognised gate types, guessed as 0.75 m squares: ${r.unknown.join(', ')}`
+        : '';
+
+      const rows = r.summary.map((s) => {
+        if (s.role === 'decoration') {
+          return `<tr><td>${s.typeId}</td><td colspan="2">scenery</td>
+                  <td>${s.item}</td></tr>`;
+        }
+        if (s.role === 'obstacle') {
+          const t = s.trigger ? `${s.trigger.toFixed(1)} m trigger` : 'scenery';
+          return `<tr><td>${s.typeId}</td><td>${s.want.toFixed(2)} m</td>
+                  <td>${s.got.toFixed(2)} m</td><td>${t}</td></tr>`;
+        }
+        // Flag the ones worth arguing with: a substitution, or a poor fit.
+        const cls = s.substituted ? 'error' : s.err > 20 ? 'error' : '';
+        const note = s.substituted ? ' (shape swapped)' : '';
+        return `<tr class="${cls}"><td>${s.typeId}</td><td>${s.want.toFixed(2)} m</td>
+                <td>${s.got.toFixed(2)} m (${s.err.toFixed(0)}%)</td>
+                <td>${s.item}${note}</td></tr>`;
+      }).join('');
+
+      $('liftoff-summary').innerHTML =
+        `<table class="liftoff-table"><thead><tr><th>Designer</th><th>Wanted</th>
+         <th>Got</th><th>Liftoff prop</th></tr></thead><tbody>${rows}</tbody></table>`;
+    };
+
+    scaleSel.onchange = refresh;
+    poleInput.oninput = refresh;
+    refresh();
+
+    $('liftoff-download').onclick = () => {
+      const pole = parseFloat(poleInput.value);
+      onDownload(parseFloat(scaleSel.value),
+                 Number.isFinite(pole) ? pole : undefined);
+      this.closeDialogs();
+    };
+    this.openDialog('dlg-liftoff');
   }
 
   openShareDialog(url) {

@@ -1,0 +1,14 @@
+{
+  "id": "1-2m-banner",
+  "name": "1.2m banner",
+  "shape": "banner",
+  "innerSize": 1.2,
+  "tubeWidth": 0.03,
+  "depth": 0.6,
+  "color": "#10942a",
+  "defaultHeight": 0,
+  "stand": {
+    "type": "legs",
+    "color": "#333333"
+  }
+}

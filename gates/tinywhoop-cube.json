@@ -1,0 +1,14 @@
+{
+  "id": "tinywhoop-cube",
+  "name": "Tinywhoop Cube",
+  "shape": "cube",
+  "innerSize": 0.75,
+  "tubeWidth": 0.08,
+  "depth": 0.08,
+  "color": "#ff6a00",
+  "defaultHeight": 0,
+  "stand": {
+    "type": "legs",
+    "color": "#333333"
+  }
+}
