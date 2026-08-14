@@ -35,6 +35,7 @@
   </label>
   <button id="btn-arena" title="Set the size of the design space">Arena…</button>
   <button id="btn-screenshot" title="Download a PNG of the current view">📷 Screenshot</button>
+  <button id="btn-liftoff" title="Export this track as a playable Liftoff race">🚁 Liftoff</button>
   <button id="btn-help" title="Keyboard shortcuts and help">?</button>
 </header>
 
@@ -190,6 +191,32 @@
     <p class="hint">Measurement clicks on a gate snap to its spot on the floor — the distance you'd tape out when building the track. Shift-click a gate to measure from its opening centre instead. Coordinates are metres from the arena corner.</p>
     <div class="dialog-actions">
       <button id="help-close">Close</button>
+    </div>
+  </div>
+
+  <div id="dlg-liftoff" class="dialog hidden">
+    <h2>Export to Liftoff</h2>
+    <div class="prop-grid">
+      <label>Scale</label>
+      <select id="liftoff-scale" title="Whoop gates are smaller than anything Liftoff has, so the layout is scaled up">
+        <option value="2" selected>×2 — gates 1.52 m (5&quot; race size)</option>
+        <option value="2.5">×2.5</option>
+        <option value="3">×3</option>
+        <option value="4">×4 — most accurate apertures, big gates</option>
+      </select>
+      <label>Arena becomes</label><output id="liftoff-arena"></output>
+      <label>Flag margin (m)</label>
+      <input id="liftoff-pole" type="number" step="0.5" min="0" value="4"
+             title="Extra room either side of a slalom flag's trigger, on top of the flag's own height">
+    </div>
+    <p class="hint" id="liftoff-warn"></p>
+    <div id="liftoff-summary"></div>
+    <p class="hint">Extract the zip over <code>%USERPROFILE%\AppData\LocalLow\LuGus Studios\Liftoff\</code>,
+      then restart Liftoff. Exporting the same track again replaces this copy rather than adding another.
+      <strong>Quit Steam before deleting Liftoff tracks</strong> — Steam Cloud silently restores them.</p>
+    <div class="dialog-actions">
+      <button id="liftoff-cancel">Cancel</button>
+      <button id="liftoff-download" class="primary">Download zip</button>
     </div>
   </div>
 </div>

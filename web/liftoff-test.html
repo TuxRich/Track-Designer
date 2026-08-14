@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Liftoff export — test harness</title>
+<!--
+  Exercises the Liftoff exporter in a real browser without needing the Go
+  backend or a designer session. Node parity covers the conversion maths; what
+  this proves is the browser half — Blob assembly, the download path, and that
+  the modules load as plain ES modules with no build step.
+
+      cd web && python -m http.server 8000
+      open http://localhost:8000/liftoff-test.html
+
+  Fixtures are the five live designer tracks plus the gate palette, captured to
+  liftoff-test-fixtures.json so the harness stays offline and deterministic.
+-->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 900px;
+         background: #1e1f22; color: #e8e8e8; }
+  h1 { font-size: 18px; }
+  select, button, input { font: inherit; padding: 4px 8px; background: #2b2d31;
+                          color: inherit; border: 1px solid #444; border-radius: 4px; }
+  button.primary { background: #3b82f6; border-color: #3b82f6; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 12px; }
+  th, td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #383a3f; }
+  th { color: #9aa0a6; font-weight: 500; }
+  tr.warn td { color: #f87171; }
+  pre { background: #17181a; padding: 10px; overflow-x: auto; font-size: 11px;
+        max-height: 260px; }
+  .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .ok { color: #4ade80; } .bad { color: #f87171; }
+</style>
+</head>
+<body>
+<h1>Liftoff export — test harness</h1>
+
+<div class="row">
+  <select id="track"></select>
+  <label>scale <input id="scale" type="number" value="2" step="0.5" style="width:5em"></label>
+  <label>flag margin <input id="pole" type="number" value="4" step="0.5" style="width:5em"></label>
+  <button id="go" class="primary">Download zip</button>
+</div>
+
+<div id="checks"></div>
+<div id="out"></div>
+<pre id="xml"></pre>
+
+<script type="module">
+import { convert } from './js/liftoff/convert.js';
+import { exportLiftoffZip } from './js/liftoff/export.js';
+import { uuid5 } from './js/liftoff/uuid5.js';
+
+const $ = (id) => document.getElementById(id);
+const fixtures = await (await fetch('./liftoff-test-fixtures.json')).json();
+const defs = Object.fromEntries(fixtures.gates.map((d) => [d.id, d]));
+
+fixtures.tracks.forEach((t, i) => {
+  $('track').add(new Option(`${t.name} (${t.data.gates.length} gates)`, String(i)));
+});
+
+// Self-checks with known-good answers, so a broken build is obvious on load
+// rather than showing up later as a track Liftoff silently refuses.
+const CHECKS = [
+  ['uuid5 matches Python', () =>
+    uuid5('6f1d2c84-5a3b-4e97-b0c2-7d9e4f8a1b60', 'track:816a3c1edf09424f:2')
+      === '6305400e-d870-5807-841e-bfe627914253'],
+  ['Cream First x2 has 14 checkpoints', () =>
+    convert(fixtures.tracks.find((t) => t.name.startsWith('Cream')),
+            { scale: 2, defs }).checkpoints === 14],
+  ['no gate carries a <scale> (ignored on flags)', () => {
+    const { track } = convert(fixtures.tracks[0], { scale: 2, defs });
+    const flags = track.split('<TrackBlueprint xsi:type="TrackBlueprintFlag">');
+    return flags.slice(1).every((b) => !b.split('</TrackBlueprint>')[0].includes('<scale>'));
+  }],
+  ['every checkpoint id appears in the race', () => {
+    const r = convert(fixtures.tracks[0], { scale: 2, defs });
+    const ids = [...r.race.matchAll(/<checkPointID>(\d+)</g)].map((m) => +m[1]);
+    return ids.length === r.checkpoints
+      && ids.every((i) => r.track.includes(`<instanceID>${i}</instanceID>`));
+  }],
+];
+
+$('checks').innerHTML = CHECKS.map(([label, fn]) => {
+  let pass = false, err = '';
+  try { pass = fn(); } catch (e) { err = ` — ${e.message}`; }
+  return `<div class="${pass ? 'ok' : 'bad'}">${pass ? '✔' : '✘'} ${label}${err}</div>`;
+}).join('');
+
+function render() {
+  const src = fixtures.tracks[+$('track').value];
+  const r = convert(src, {
+    scale: parseFloat($('scale').value),
+    poleTrigger: parseFloat($('pole').value),
+    defs,
+  });
+  const rows = r.summary.map((s) => {
+    if (s.role === 'decoration') {
+      return `<tr><td>${s.typeId}</td><td colspan="2">scenery</td><td>${s.item}</td></tr>`;
+    }
+    const extra = s.trigger ? `${s.trigger.toFixed(1)} m trigger @ ${s.triggerYaw.toFixed(0)}°` : '';
+    const err = s.err === undefined ? '' : ` (${s.err.toFixed(0)}%)`;
+    return `<tr class="${s.substituted ? 'warn' : ''}"><td>${s.typeId}</td>
+      <td>${s.want.toFixed(2)} m</td><td>${s.got.toFixed(2)} m${err}</td>
+      <td>${s.item} ${extra}${s.substituted ? ' — shape swapped' : ''}</td></tr>`;
+  }).join('');
+
+  $('out').innerHTML = `<p>${r.name} — ${r.arena[0]} × ${r.arena[1]} m,
+    ${r.checkpoints} checkpoints${r.unknown.length ? `, unknown: ${r.unknown.join(', ')}` : ''}<br>
+    track <code>${r.trackGuid}</code><br>race <code>${r.raceGuid}</code></p>
+    <table><thead><tr><th>Designer</th><th>Wanted</th><th>Got</th><th>Liftoff prop</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  $('xml').textContent = r.track.slice(0, 1600) + '\n…';
+}
+
+['track', 'scale', 'pole'].forEach((id) => $(id).addEventListener('input', render));
+$('go').addEventListener('click', async () => {
+  const src = fixtures.tracks[+$('track').value];
+  const { blob, filename } = exportLiftoffZip(src, defs, {
+    scale: parseFloat($('scale').value),
+    poleTrigger: parseFloat($('pole').value),
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+});
+render();
+</script>
+</body>
+</html>

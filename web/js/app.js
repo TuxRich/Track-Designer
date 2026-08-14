@@ -3,6 +3,8 @@ import { SceneManager } from './scene.js';
 import { Editor } from './editor.js';
 import { MeasureTool } from './measure.js';
 import { UI } from './ui.js';
+import { downloadLiftoffZip } from './liftoff/export.js';
+import { convert as convertLiftoff } from './liftoff/convert.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -206,6 +208,30 @@ $('btn-screenshot').addEventListener('click', () => {
   a.href = url;
   a.download = `${name}.png`;
   a.click();
+});
+
+// Export the design as a playable Liftoff race. This runs on the in-memory
+// document, so unsaved edits are included — you do not have to save first.
+$('btn-liftoff').addEventListener('click', () => {
+  if (!editor.gates.length) {
+    ui.toast('Nothing to export — place some gates first.', true);
+    return;
+  }
+  const src = {
+    id: currentTrackId || 'unsaved',
+    name: $('track-name').value.trim() || 'Untitled track',
+    data: trackData(),
+  };
+  const opts = (scale, poleTrigger) => ({
+    scale, ...(poleTrigger === undefined ? {} : { poleTrigger }),
+  });
+  ui.openLiftoffDialog(
+    (scale, poleTrigger) => convertLiftoff(src, defsById, opts(scale, poleTrigger)),
+    (scale, poleTrigger) => {
+      const { filename } = downloadLiftoffZip(src, defsById, opts(scale, poleTrigger));
+      ui.toast(`Exported ${filename} — extract it over your Liftoff folder`);
+    },
+  );
 });
 
 $('chk-snap').addEventListener('change', (e) => editor.setSnap(e.target.checked));

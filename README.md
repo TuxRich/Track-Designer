@@ -81,6 +81,80 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   or delete gates, and cannot save changes. Save the track first so it has an
   id to link to.
 - **📷 Screenshot** — downloads a PNG of the current view.
+- **🚁 Liftoff** — exports the track as a playable [Liftoff](https://store.steampowered.com/app/410340/)
+  race. See below.
+
+## Export to Liftoff
+
+**🚁 Liftoff** converts the track you are looking at into a playable Liftoff
+race and downloads it as a zip. It works on the in-memory design, so unsaved
+edits are included — you do not have to save first.
+
+Extract the zip over your Liftoff folder and restart the game:
+
+```
+%USERPROFILE%\AppData\LocalLow\LuGus Studios\Liftoff\
+```
+
+The archive already has the right shape, so there is nothing to rename:
+
+```
+Tracks/<track-guid>/<track-guid>_0001.track     geometry: props, checkpoints, spawn
+Races/<race-guid>/<race-guid>_0001.race         ordering: which checkpoint, in what order
+```
+
+GUIDs are derived from the track id and scale, so exporting the same track
+again **replaces** that copy rather than adding another entry to Liftoff's
+already crowded track list.
+
+### Why it scales the layout up
+
+Whoop courses are 5–10 m rooms with 0.5–0.75 m gates. The smallest gate prop in
+Liftoff is about 1.10 m, so a 1:1 rebuild has a mean aperture error of 107% —
+every gate roughly twice the size it should be. Scaling is forced, not a
+preference. ×2 is the default and lands gates on 1.52 m, exactly what a real 5"
+course uses; ×4 matches apertures more closely on paper but oversizes
+everything. The dialog shows the resulting arena size as you change it.
+
+### Read the preview
+
+Before downloading, the dialog lists every gate: what size the designer asked
+for, which real Liftoff prop it got, the error, and whether the *shape* had to
+be swapped (flagged in red). Substitutions happen when a prop would come out
+conspicuously smaller than the track's other gates — a gate at half the size of
+its neighbours reads as a bug in the air and is very hard to diagnose from
+inside the game.
+
+Gates are matched by `shape` and `innerSize`, not by `typeId`, so gate types you
+invent with **＋ New gate type** export correctly with no code changes. Anything
+genuinely unrecognised is called out rather than silently becoming a default.
+
+The **flag margin** field controls how much room you get either side of a slalom
+pole. Poles are rotationally symmetric, so their trigger is squared to the
+direction of travel worked out from the neighbouring gates, not to the pole's own
+rotation.
+
+### Implementation
+
+`web/js/liftoff/` — plain ES modules, no build step, no dependencies, in keeping
+with the rest of the frontend. Nothing server-side is involved.
+
+| File | |
+|---|---|
+| `convert.js` | designer document → Liftoff geometry |
+| `catalog.js` | the real Liftoff prop catalogue and how gates are matched to it |
+| `xml.js` | `.track` / `.race` writers |
+| `uuid5.js` | deterministic GUIDs (self-contained SHA-1, so no secure-context requirement) |
+| `zip.js` | minimal store-only zip writer |
+| `export.js` | entry point |
+
+`web/liftoff-test.html` is a standalone harness with embedded fixtures and
+self-checks — open it with the server running to exercise the exporter without
+designing anything.
+
+The conversion rules were worked out against Liftoff's file format and a corpus
+of Steam Workshop tracks in a separate project, which keeps a Python
+implementation and asserts the two produce byte-identical output.
 
 ## Adding a gate type
 
@@ -143,4 +217,5 @@ server/gates.go    loads gates/*.json, GET /api/gates
 server/tracks.go   track CRUD, JSON files in data/tracks/
 gates/             gate type definitions (edit these!)
 web/               frontend (vanilla JS modules + vendored Three.js)
+web/js/liftoff/    Liftoff exporter (self-contained, no dependencies)
 ```
