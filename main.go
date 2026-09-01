@@ -51,15 +51,27 @@ func main() {
 		}
 	}
 
+	// API data changes on every edit, so it must never be cached. Without
+	// explicit headers a browser may cache a GET heuristically and serve a
+	// stale track after a save — making the save look like it was lost.
+	noStore := func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+			h(w, r)
+		}
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/gates", gates.HandleList)
-	mux.HandleFunc("POST /api/gates", gates.HandleCreate)
-	mux.HandleFunc("GET /api/tracks", tracks.HandleList)
-	mux.HandleFunc("POST /api/tracks", tracks.HandleCreate)
-	mux.HandleFunc("GET /api/tracks/{id}", tracks.HandleGet)
-	mux.HandleFunc("PUT /api/tracks/{id}", tracks.HandleUpdate)
-	mux.HandleFunc("DELETE /api/tracks/{id}", tracks.HandleDelete)
-	mux.HandleFunc("GET /api/banners", banners.HandleList)
+	mux.HandleFunc("GET /api/gates", noStore(gates.HandleList))
+	mux.HandleFunc("POST /api/gates", noStore(gates.HandleCreate))
+	mux.HandleFunc("GET /api/tracks", noStore(tracks.HandleList))
+	mux.HandleFunc("POST /api/tracks", noStore(tracks.HandleCreate))
+	mux.HandleFunc("GET /api/tracks/{id}", noStore(tracks.HandleGet))
+	mux.HandleFunc("PUT /api/tracks/{id}", noStore(tracks.HandleUpdate))
+	mux.HandleFunc("DELETE /api/tracks/{id}", noStore(tracks.HandleDelete))
+	mux.HandleFunc("GET /api/banners", noStore(banners.HandleList))
 	mux.Handle("GET /banners/", banners.FileServer())
 	files := http.FileServerFS(static)
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -43,6 +43,11 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
 - **Replace** — the "Replace with…" dropdown in a gate's panel swaps it for a
   different gate type in the exact same spot, keeping its position, rotation,
   height, direction, prop status and sequence number.
+- **Gates in the same spot** — when two or more gates share a position (e.g. a
+  cube flown through twice on different routes), their numbers are stacked at
+  different heights so they don't overlay, and each number is colour-matched to
+  its own direction arrows (yellow, pink, green, …) so you can tell which way
+  to fly for which number. Move them apart and they revert to normal.
 - **Props** — uncheck "Use as gate" in a gate's panel (the default for tables)
   to make it a prop: it stays in the scene and you can still move, measure to,
   and screenshot it, but it gets no number, no direction arrow, and isn't part

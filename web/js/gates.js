@@ -448,12 +448,23 @@ export function normalizeCubeDir(dir) {
   return LEGACY_CUBE_DIRS[dir] || 'front>back';
 }
 
+// When several gates sit in the same spot (e.g. a cube flown through twice),
+// each gets its own colour so you can tell which number owns which arrows.
+// The first is the usual yellow, so ordinary tracks look unchanged.
+export const OVERLAP_COLORS = [0xffe14d, 0xff5edb, 0x7cff5e, 0xff8a3a, 0xb98bff];
+
+export const DEFAULT_ARROW_COLOR = OVERLAP_COLORS[0];
+
+export function colorToCSS(hex) {
+  return `#${hex.toString(16).padStart(6, '0')}`;
+}
+
 // One arrow mesh from `from` to `to` (local coordinates of the arrow group).
-function arrowSegment(from, to) {
+function arrowSegment(from, to, color = DEFAULT_ARROW_COLOR) {
   const dirV = to.clone().sub(from);
   const len = dirV.length();
   const coneLen = Math.min(0.14, len * 0.35);
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9 });
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
   const g = new THREE.Group();
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, len - coneLen, 8), mat);
   shaft.rotation.x = Math.PI / 2;
@@ -472,9 +483,9 @@ function arrowSegment(from, to) {
 
 // An arc that rises from the front, over the top edge, and down the back —
 // the "fly over this" cue for banners. `reverse` flips the travel direction.
-function flyOverArrow(frameHeight, reverse) {
+function flyOverArrow(frameHeight, reverse, color = DEFAULT_ARROW_COLOR) {
   const g = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9 });
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
   const half = frameHeight / 2;
   const reach = Math.max(0.35, half + 0.15);
   const peak = half + 0.22; // clear the top edge
@@ -494,8 +505,9 @@ function flyOverArrow(frameHeight, reverse) {
 }
 
 // (Re)builds the arrow meshes inside the gate's 'arrow' container for the
-// given direction value.
-export function applyArrowDirection(gate, dir) {
+// given direction value. `color` tints them — used to tell co-located gates
+// apart (see OVERLAP_COLORS).
+export function applyArrowDirection(gate, dir, color = DEFAULT_ARROW_COLOR) {
   const frame = gate.getObjectByName('frame');
   const arrow = frame?.getObjectByName('arrow');
   if (!arrow) return;
@@ -518,17 +530,17 @@ export function applyArrowDirection(gate, dir) {
     const entry = nIn.clone().multiplyScalar(reach);
     const exit = nOut.clone().multiplyScalar(reach);
     if (OPPOSITE_FACE[inFace] === outFace) {
-      arrow.add(arrowSegment(entry, exit)); // straight through — one arrow
+      arrow.add(arrowSegment(entry, exit, color)); // straight through — one arrow
     } else {
       const center = new THREE.Vector3();
-      arrow.add(arrowSegment(entry, center), arrowSegment(center, exit));
+      arrow.add(arrowSegment(entry, center, color), arrowSegment(center, exit, color));
     }
   } else if (frame.userData.flyOver) {
-    arrow.add(flyOverArrow(frame.userData.frameHeight, dir === 'back'));
+    arrow.add(flyOverArrow(frame.userData.frameHeight, dir === 'back', color));
   } else {
     const len = Math.max(0.4, def.innerSize * 0.9);
     const half = new THREE.Vector3(0, 0, len / 2);
-    arrow.add(arrowSegment(half.clone().negate(), half));
+    arrow.add(arrowSegment(half.clone().negate(), half, color));
     arrow.rotation.y = dir === 'back' ? Math.PI : 0;
   }
 }

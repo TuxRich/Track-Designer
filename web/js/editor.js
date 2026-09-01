@@ -9,6 +9,9 @@ import {
   normalizeCubeDir,
   makeStartLine,
   propByDefault,
+  OVERLAP_COLORS,
+  DEFAULT_ARROW_COLOR,
+  colorToCSS,
 } from './gates.js';
 import { makeTextSprite } from './scene.js';
 
@@ -191,7 +194,7 @@ export class Editor {
   _applyDir(entry, dir) {
     const multi = entry.object.getObjectByName('frame')?.userData.multiDirectional;
     entry.dir = multi ? normalizeCubeDir(dir) : dir === 'back' ? 'back' : 'forward';
-    applyArrowDirection(entry.object, entry.dir);
+    applyArrowDirection(entry.object, entry.dir, entry.arrowColor || DEFAULT_ARROW_COLOR);
   }
 
   _applyArrowVisibility(entry) {
@@ -315,9 +318,34 @@ export class Editor {
     this.onGatesChanged();
   }
 
+  // Groups gates that sit in (roughly) the same spot, so a gate used twice in
+  // a track can be told apart. Returns entry -> { index, size } where index is
+  // its position within the co-located group. Props are ignored (no numbers).
+  _overlapInfo() {
+    const TOL = 0.35; // metres apart to still count as "the same place"
+    const clusters = [];
+    for (const entry of this.gates) {
+      if (entry.prop) continue;
+      const p = entry.object.position;
+      const cluster = clusters.find((c) => {
+        const q = c[0].object.position;
+        return Math.hypot(p.x - q.x, p.z - q.z) <= TOL;
+      });
+      if (cluster) cluster.push(entry);
+      else clusters.push([entry]);
+    }
+    const info = new Map();
+    for (const c of clusters) {
+      c.forEach((entry, index) => info.set(entry, { index, size: c.length }));
+    }
+    return info;
+  }
+
   // Number the gates in flight order. Props (e.g. tables) are skipped — they
-  // get no number and no label.
+  // get no number and no label. Gates sharing a spot get their labels stacked
+  // at different heights and colour-matched to their own direction arrows.
   _renumber() {
+    const overlaps = this._overlapInfo();
     let n = 0;
     this.gates.forEach((entry) => {
       const old = entry.object.getObjectByName('numberLabel');
@@ -332,14 +360,26 @@ export class Editor {
       }
       n++;
       entry.number = n;
+
+      const { index, size } = overlaps.get(entry) || { index: 0, size: 1 };
+      const stacked = size > 1;
+      const color = stacked ? OVERLAP_COLORS[index % OVERLAP_COLORS.length] : DEFAULT_ARROW_COLOR;
+      // Recolour this gate's arrows to match its label when stacking changes.
+      if (entry.arrowColor !== color) {
+        entry.arrowColor = color;
+        applyArrowDirection(entry.object, entry.dir, color);
+        this._applyArrowVisibility(entry);
+      }
+
       const label = makeTextSprite(String(n), {
         height: 0.22,
-        color: '#ffffff',
-        background: 'rgba(20,22,27,0.8)',
+        color: stacked ? colorToCSS(color) : '#ffffff',
+        background: 'rgba(20,22,27,0.85)',
         alwaysOnTop: true,
       });
       label.name = 'numberLabel';
-      label.position.y = gateTop(entry.object) + 0.22;
+      // Lift each additional gate's label so co-located numbers don't overlay.
+      label.position.y = gateTop(entry.object) + 0.22 + index * 0.34;
       entry.object.add(label);
     });
     this._updateStartMarker();
@@ -445,6 +485,7 @@ export class Editor {
       this._settleGate(entry);
     }
     this._positionPivotAtCentroid();
+    this._renumber(); // moving may have created/broken an overlap stack
     this.onGatesChanged();
     this.onSelectionChanged(this.selected);
   }
@@ -494,6 +535,7 @@ export class Editor {
   // Single-gate drag release.
   _settleAfterDrag(entry) {
     this._settleGate(entry);
+    this._renumber(); // moving may have created/broken an overlap stack
     this.onGatesChanged();
     this.onSelectionChanged(entry); // refresh the properties panel
   }
@@ -527,9 +569,12 @@ export class Editor {
     if (dir !== undefined) this._applyDir(entry, dir);
     if (prop !== undefined && !!prop !== entry.prop) {
       entry.prop = !!prop;
-      this._renumber(); // add/remove this gate's number and shift the rest
       this._applyArrowVisibility(entry); // props show no arrow
       this.onSelectionChanged(entry); // Order row visibility depends on prop
+    }
+    // Position/height edits can change overlap stacking and label heights.
+    if (Number.isFinite(x) || Number.isFinite(z) || Number.isFinite(height) || prop !== undefined) {
+      this._renumber();
     }
     this._syncEntry(entry);
     this.onGatesChanged();

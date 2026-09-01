@@ -2,6 +2,10 @@
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
+    // Never read the API from the browser cache — a stale track after a save
+    // makes the save look like it was lost (belt-and-braces with the server's
+    // no-store headers, in case a proxy strips them).
+    cache: 'no-store',
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
