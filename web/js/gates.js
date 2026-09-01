@@ -141,6 +141,10 @@ export const shapeBuilders = {
     g.userData.pickSize = { w: Math.max(0.15, r * 8), h };
     // You fly around a pole, not through it — no direction arrow.
     g.userData.directional = false;
+    // A pole carries its own base plate, so raising it must not add the
+    // generic stand legs/feet (whose spread is derived from innerSize, which
+    // for a pole is its height — giving absurdly wide feet).
+    g.userData.noStand = true;
     return g;
   },
 
@@ -754,7 +758,8 @@ export function setGateHeight(gate, height, ghost = false) {
     c.geometry?.dispose();
     c.material?.dispose();
   }
-  if (height > 0.01) {
+  // Shapes with their own base (poles) don't get generic stand legs.
+  if (height > 0.01 && !frame.userData.noStand) {
     const standColor = new THREE.Color(def.stand?.color || '#333333');
     const mat = new THREE.MeshStandardMaterial({
       color: standColor,
