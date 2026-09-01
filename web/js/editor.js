@@ -334,9 +334,23 @@ export class Editor {
       if (cluster) cluster.push(entry);
       else clusters.push([entry]);
     }
+    const MIN_LABEL_GAP = 0.34; // metres of clear space between two labels
     const info = new Map();
     for (const c of clusters) {
-      c.forEach((entry, index) => info.set(entry, { index, size: c.length }));
+      // Colour follows flight order within the group, so it stays predictable.
+      c.forEach((entry, index) =>
+        info.set(entry, { index, size: c.length, labelY: gateTop(entry.object) + 0.22 })
+      );
+      // Only push labels apart when they would actually collide. Gates stacked
+      // vertically (e.g. a split-S) are already separated by their own heights,
+      // so they keep their natural label positions.
+      const byHeight = c.slice().sort((a, b) => gateTop(a.object) - gateTop(b.object));
+      let prevY = -Infinity;
+      for (const entry of byHeight) {
+        const rec = info.get(entry);
+        if (rec.labelY < prevY + MIN_LABEL_GAP) rec.labelY = prevY + MIN_LABEL_GAP;
+        prevY = rec.labelY;
+      }
     }
     return info;
   }
@@ -361,7 +375,11 @@ export class Editor {
       n++;
       entry.number = n;
 
-      const { index, size } = overlaps.get(entry) || { index: 0, size: 1 };
+      const { index, size, labelY } = overlaps.get(entry) || {
+        index: 0,
+        size: 1,
+        labelY: gateTop(entry.object) + 0.22,
+      };
       const stacked = size > 1;
       const color = stacked ? OVERLAP_COLORS[index % OVERLAP_COLORS.length] : DEFAULT_ARROW_COLOR;
       // Recolour this gate's arrows to match its label when stacking changes.
@@ -378,8 +396,8 @@ export class Editor {
         alwaysOnTop: true,
       });
       label.name = 'numberLabel';
-      // Lift each additional gate's label so co-located numbers don't overlay.
-      label.position.y = gateTop(entry.object) + 0.22 + index * 0.34;
+      // Resolved above: natural height, lifted only where labels would collide.
+      label.position.y = labelY;
       entry.object.add(label);
     });
     this._updateStartMarker();
