@@ -78,9 +78,18 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   to keep their own copy, but overwriting or deleting the original requires its
   password. Passwords are stored salted and stretched (never in plain text) and
   are never sent to clients; the server enforces this on every write.
+- **Private (unreleased) tracks** — tick **Private** in the Save As dialog to
+  hide a work-in-progress completely: it is left out of the track list and its
+  contents can't be fetched at all without its password, so nobody gets an
+  early look. A private track must have a password. In the Load dialog, enter a
+  password and press **Unlock** to reveal the private tracks it opens (the
+  admin password reveals them all); private rows are marked 🚧 and carry a
+  **Release** button that makes the track public in one click (**Unlist** puts
+  it back). Share links to an unreleased track prompt for the password too.
 - **Admin master password** — start the server with `-admin-password <pw>` (or
   set `TRACK_ADMIN_PASSWORD`) to be able to edit or delete any track without
-  knowing its password. Enter it wherever a track password is asked for.
+  knowing its password, and to see every private track. Enter it wherever a
+  track password is asked for.
 - **Share** — 🔗 Share copies a view-only link (`?view=<id>`) to a saved
   track. Recipients can orbit, measure, and screenshot, but cannot move, add,
   or delete gates, and cannot save changes. Save the track first so it has an

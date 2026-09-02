@@ -126,8 +126,12 @@
     <div class="prop-grid">
       <label>Name</label><input id="save-name" type="text" spellcheck="false">
       <label>Password</label><input id="save-password" type="password" placeholder="optional" autocomplete="new-password">
+      <label id="save-private-label">Private</label>
+      <input id="save-private" type="checkbox" title="Hide this unreleased track completely until you release it">
     </div>
-    <p class="hint">Set a password to stop others editing or deleting this track. Leave it blank to keep it open. Anyone can still load it and save their own copy.</p>
+    <p class="hint">Set a password to stop others editing or deleting this track. Leave it blank to keep it open — anyone can still load it and save their own copy.</p>
+    <p class="hint">Tick <strong>Private</strong> for an unreleased track: it stays hidden from everyone (it won't even appear in the Load list) until you untick it. Needs a password.</p>
+    <p id="save-error" class="hint error"></p>
     <div class="dialog-actions">
       <button id="save-cancel">Cancel</button>
       <button id="save-confirm" class="primary">Save</button>
@@ -161,6 +165,10 @@
 
   <div id="dlg-load" class="dialog hidden">
     <h2>Load track</h2>
+    <div class="share-row" id="load-unlock">
+      <input id="load-password" type="password" placeholder="Password to show private tracks" autocomplete="off">
+      <button id="load-unlock-btn">Unlock</button>
+    </div>
     <div id="track-list"></div>
     <div class="dialog-actions">
       <button id="load-cancel">Close</button>

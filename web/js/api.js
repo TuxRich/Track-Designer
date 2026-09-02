@@ -27,10 +27,21 @@ export const api = {
   gates: () => request('/api/gates'),
   banners: () => request('/api/banners'),
   createGate: (def) => request('/api/gates', { method: 'POST', body: JSON.stringify(def) }),
-  listTracks: () => request('/api/tracks'),
-  getTrack: (id) => request(`/api/tracks/${id}`),
-  createTrack: (name, data, password) =>
-    request('/api/tracks', { method: 'POST', body: JSON.stringify({ name, data, password }) }),
+  // A password here also reveals the private (unreleased) tracks it unlocks.
+  listTracks: (password) => request('/api/tracks', { headers: pwHeader(password) }),
+  getTrack: (id, password) => request(`/api/tracks/${id}`, { headers: pwHeader(password) }),
+  createTrack: (name, data, password, isPrivate) =>
+    request('/api/tracks', {
+      method: 'POST',
+      body: JSON.stringify({ name, data, password, private: !!isPrivate }),
+    }),
+  // Release a track (private:false) or pull it back, without resending data.
+  setTrackPrivacy: (id, isPrivate, password) =>
+    request(`/api/tracks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ private: !!isPrivate }),
+      headers: pwHeader(password),
+    }),
   updateTrack: (id, name, data, password) =>
     request(`/api/tracks/${id}`, { method: 'PUT', body: JSON.stringify({ name, data }), headers: pwHeader(password) }),
   deleteTrack: (id, password) =>

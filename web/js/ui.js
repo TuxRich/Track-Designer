@@ -245,14 +245,23 @@ export class UI {
   openSaveDialog(currentName, onSave) {
     $('save-name').value = currentName || '';
     $('save-password').value = '';
+    $('save-private').checked = false;
+    $('save-error').textContent = '';
     this.openDialog('dlg-save');
     $('save-name').focus();
     $('save-name').select();
     $('save-confirm').onclick = () => {
       const name = $('save-name').value.trim() || 'Untitled track';
       const password = $('save-password').value;
+      const isPrivate = $('save-private').checked;
+      // Without a password a private track could never be reopened.
+      if (isPrivate && !password) {
+        $('save-error').textContent = 'A private track needs a password.';
+        $('save-password').focus();
+        return;
+      }
       this.closeDialogs();
-      onSave({ name, password });
+      onSave({ name, password, private: isPrivate });
     };
   }
 
@@ -548,8 +557,13 @@ export class UI {
     nameInput.readOnly = true;
   }
 
-  openLoadDialog(tracks, { onLoad, onDelete }) {
+  openLoadDialog(tracks, { onLoad, onDelete, onUnlock, onTogglePrivate }, unlockPassword = '') {
     const list = $('track-list');
+    $('load-password').value = unlockPassword;
+    $('load-unlock-btn').onclick = () => onUnlock($('load-password').value);
+    $('load-password').onkeydown = (e) => {
+      if (e.key === 'Enter') onUnlock($('load-password').value);
+    };
     list.innerHTML = '';
     if (!tracks.length) {
       const empty = document.createElement('div');
@@ -562,11 +576,14 @@ export class UI {
       row.className = 'track-row';
       const title = document.createElement('span');
       title.className = 'track-title';
-      // A padlock marks tracks that need a password to edit or delete.
-      title.textContent = `${t.protected ? '🔒 ' : ''}${t.name || '(untitled)'}`;
-      title.title = t.protected
-        ? 'Password-protected — anyone can load it, but editing or deleting needs the password'
-        : 'Load this track';
+      // 🚧 marks an unreleased (private) track, 🔒 one that needs a password
+      // to edit or delete.
+      title.textContent = `${t.private ? '🚧 ' : ''}${t.protected ? '🔒 ' : ''}${t.name || '(untitled)'}`;
+      title.title = t.private
+        ? 'Private — hidden from everyone without the password until you release it'
+        : t.protected
+          ? 'Password-protected — anyone can load it, but editing or deleting needs the password'
+          : 'Load this track';
       title.addEventListener('click', () => {
         this.closeDialogs();
         onLoad(t.id);
@@ -574,6 +591,14 @@ export class UI {
       const date = document.createElement('span');
       date.className = 'track-date';
       date.textContent = new Date(t.updated).toLocaleString();
+      // Release an unreleased track, or pull a public one back into private.
+      const privacy = document.createElement('button');
+      privacy.textContent = t.private ? 'Release' : 'Unlist';
+      privacy.title = t.private
+        ? 'Make this track public — everyone will be able to see and load it'
+        : 'Make this track private again (needs a password on the track)';
+      privacy.addEventListener('click', () => onTogglePrivate(t));
+
       const del = document.createElement('button');
       del.className = 'danger';
       del.textContent = '✕';
@@ -582,7 +607,7 @@ export class UI {
         if (!confirm(`Delete track "${t.name}"? This cannot be undone.`)) return;
         if (await onDelete(t)) row.remove();
       });
-      row.append(title, date, del);
+      row.append(title, date, privacy, del);
       list.appendChild(row);
     }
     this.openDialog('dlg-load');

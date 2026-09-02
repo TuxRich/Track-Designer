@@ -30,6 +30,10 @@ type Track struct {
 	Updated      time.Time       `json:"updated"`
 	Data         json.RawMessage `json:"data"`
 	PasswordHash string          `json:"passwordHash,omitempty"`
+	// Private hides an unreleased track completely: it is left out of the
+	// track list and its contents cannot be fetched without the track's
+	// password (or the admin password).
+	Private bool `json:"private,omitempty"`
 }
 
 // trackResponse is the client-facing shape — it exposes whether a track is
@@ -40,10 +44,17 @@ type trackResponse struct {
 	Updated   time.Time       `json:"updated"`
 	Data      json.RawMessage `json:"data,omitempty"`
 	Protected bool            `json:"protected"`
+	Private   bool            `json:"private"`
 }
 
 func (t *Track) response(includeData bool) trackResponse {
-	r := trackResponse{ID: t.ID, Name: t.Name, Updated: t.Updated, Protected: t.PasswordHash != ""}
+	r := trackResponse{
+		ID:        t.ID,
+		Name:      t.Name,
+		Updated:   t.Updated,
+		Protected: t.PasswordHash != "",
+		Private:   t.Private,
+	}
 	if includeData {
 		r.Data = t.Data
 	}
@@ -56,6 +67,7 @@ type TrackSummary struct {
 	Name      string    `json:"name"`
 	Updated   time.Time `json:"updated"`
 	Protected bool      `json:"protected"`
+	Private   bool      `json:"private"`
 }
 
 // TrackStore persists tracks as individual JSON files in a directory.
@@ -147,6 +159,11 @@ func verifyPassword(pw, stored string) bool {
 	return subtle.ConstantTimeCompare(stretch(pw, salt, iters), want) == 1
 }
 
+func (s *TrackStore) isAdmin(provided string) bool {
+	return s.adminPassword != "" &&
+		subtle.ConstantTimeCompare([]byte(provided), []byte(s.adminPassword)) == 1
+}
+
 // authorize reports whether `provided` (the X-Track-Password header) may edit
 // or delete `t`. Unprotected tracks are always editable; the admin password
 // overrides any track password.
@@ -154,10 +171,23 @@ func (s *TrackStore) authorize(t *Track, provided string) bool {
 	if t.PasswordHash == "" {
 		return true
 	}
-	if s.adminPassword != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(s.adminPassword)) == 1 {
+	if s.isAdmin(provided) {
 		return true
 	}
 	return provided != "" && verifyPassword(provided, t.PasswordHash)
+}
+
+// canView reports whether `t` may be listed or opened. Public tracks are open
+// to everyone; a private (unreleased) track needs its own password or the
+// admin password. A private track with no password of its own is admin-only.
+func (s *TrackStore) canView(t *Track, provided string) bool {
+	if !t.Private {
+		return true
+	}
+	if s.isAdmin(provided) {
+		return true
+	}
+	return t.PasswordHash != "" && provided != "" && verifyPassword(provided, t.PasswordHash)
 }
 
 // ---------- handlers ----------
@@ -170,6 +200,9 @@ func (s *TrackStore) HandleList(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// A supplied password reveals the private tracks it unlocks (the admin
+	// password reveals them all); everyone else never sees they exist.
+	provided := r.Header.Get("X-Track-Password")
 	summaries := []TrackSummary{}
 	for _, p := range paths {
 		id := filepath.Base(p)
@@ -178,7 +211,16 @@ func (s *TrackStore) HandleList(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue // skip unreadable files rather than failing the whole list
 		}
-		summaries = append(summaries, TrackSummary{ID: t.ID, Name: t.Name, Updated: t.Updated, Protected: t.PasswordHash != ""})
+		if !s.canView(t, provided) {
+			continue
+		}
+		summaries = append(summaries, TrackSummary{
+			ID:        t.ID,
+			Name:      t.Name,
+			Updated:   t.Updated,
+			Protected: t.PasswordHash != "",
+			Private:   t.Private,
+		})
 	}
 	sort.Slice(summaries, func(i, j int) bool { return summaries[i].Updated.After(summaries[j].Updated) })
 	writeJSON(w, http.StatusOK, summaries)
@@ -191,6 +233,7 @@ func (s *TrackStore) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		Name     string          `json:"name"`
 		Data     json.RawMessage `json:"data"`
 		Password string          `json:"password"`
+		Private  bool            `json:"private"`
 	}
 	if err := decodeBody(r, &in); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -199,7 +242,12 @@ func (s *TrackStore) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	if in.Name == "" {
 		in.Name = "Untitled track"
 	}
-	t := &Track{ID: newID(), Name: in.Name, Updated: time.Now().UTC(), Data: in.Data}
+	// Without a password nobody (bar the admin) could ever open it again.
+	if in.Private && in.Password == "" {
+		writeError(w, http.StatusBadRequest, "a private track needs a password")
+		return
+	}
+	t := &Track{ID: newID(), Name: in.Name, Updated: time.Now().UTC(), Data: in.Data, Private: in.Private}
 	if in.Password != "" {
 		t.PasswordHash = hashPassword(in.Password)
 	}
@@ -229,6 +277,11 @@ func (s *TrackStore) HandleGet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// Unreleased tracks can't be opened without the password.
+	if !s.canView(t, r.Header.Get("X-Track-Password")) {
+		writeError(w, http.StatusForbidden, "this track is private — enter its password to open it")
+		return
+	}
 	writeJSON(w, http.StatusOK, t.response(true))
 }
 
@@ -244,6 +297,9 @@ func (s *TrackStore) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Name string          `json:"name"`
 		Data json.RawMessage `json:"data"`
+		// Pointer so an omitted field leaves the current setting alone — this
+		// is how a track is released (private: false) or pulled back.
+		Private *bool `json:"private"`
 	}
 	if err := decodeBody(r, &in); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -264,7 +320,24 @@ func (s *TrackStore) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "wrong password")
 		return
 	}
-	t := &Track{ID: id, Name: in.Name, Updated: time.Now().UTC(), Data: in.Data, PasswordHash: existing.PasswordHash}
+	private := existing.Private
+	if in.Private != nil {
+		private = *in.Private
+	}
+	if private && existing.PasswordHash == "" {
+		writeError(w, http.StatusBadRequest, "a private track needs a password — save it as a new track with one")
+		return
+	}
+	// Name/data are optional so a privacy-only change needn't resend the track.
+	name := in.Name
+	if name == "" {
+		name = existing.Name
+	}
+	data := in.Data
+	if len(data) == 0 {
+		data = existing.Data
+	}
+	t := &Track{ID: id, Name: name, Updated: time.Now().UTC(), Data: data, PasswordHash: existing.PasswordHash, Private: private}
 	if err := s.save(t); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

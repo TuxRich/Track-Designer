@@ -43,14 +43,27 @@ async function init() {
 // can still measure and screenshot, but cannot move/add/delete or save gates.
 async function enterViewMode(id) {
   editor.readOnly = true;
+  let t;
   try {
-    const t = await api.getTrack(id);
-    loadTrackData(t.data);
-    ui.setViewOnly(t.name);
-    ui.toast(`Viewing shared track "${t.name}"`);
+    t = await api.getTrack(id);
   } catch (err) {
-    ui.toast(`Could not open shared track: ${err.message}`, true);
+    if (err.status !== 403) {
+      ui.toast(`Could not open shared track: ${err.message}`, true);
+      return;
+    }
+    // A shared link to a track that hasn't been released yet.
+    const pw = await ui.askPassword('This shared track is private and not released yet. Enter its password (or the admin password) to view it.');
+    if (pw === null) return;
+    try {
+      t = await api.getTrack(id, pw);
+    } catch (err2) {
+      ui.toast(err2.status === 403 ? 'Wrong password — track not opened.' : `Could not open shared track: ${err2.message}`, true);
+      return;
+    }
   }
+  loadTrackData(t.data);
+  ui.setViewOnly(t.name);
+  ui.toast(`Viewing shared track "${t.name}"`);
 }
 
 // ---------- track document ----------
@@ -105,32 +118,48 @@ async function saveTrack() {
 
 // Always create a new track, optionally protected with a password.
 function saveTrackAs() {
-  ui.openSaveDialog($('track-name').value.trim(), async ({ name, password }) => {
+  ui.openSaveDialog($('track-name').value.trim(), async ({ name, password, private: isPrivate }) => {
     try {
-      const t = await api.createTrack(name, trackData(), password);
+      const t = await api.createTrack(name, trackData(), password, isPrivate);
       currentTrackId = t.id;
       currentPassword = password || '';
       currentProtected = !!t.protected;
       $('track-name').value = name;
-      ui.toast(`Saved "${name}"${password ? ' (password protected)' : ''}`);
+      const how = isPrivate ? ' 🚧 (private — hidden until you release it)' : password ? ' (password protected)' : '';
+      ui.toast(`Saved "${name}"${how}`);
     } catch (err) {
       ui.toast(`Save failed: ${err.message}`, true);
     }
   });
 }
 
-async function loadTrack(id) {
+// Open a track. Private ones need a password, so retry once after asking.
+async function loadTrack(id, password = '') {
+  let t;
   try {
-    const t = await api.getTrack(id);
-    currentTrackId = t.id;
-    currentPassword = '';
-    currentProtected = !!t.protected;
-    $('track-name').value = t.name;
-    loadTrackData(t.data);
-    ui.toast(`Loaded "${t.name}"${t.protected ? ' 🔒 (protected — Save As to keep your own copy)' : ''}`);
+    t = await api.getTrack(id, password);
   } catch (err) {
-    ui.toast(`Load failed: ${err.message}`, true);
+    if (err.status !== 403) {
+      ui.toast(`Load failed: ${err.message}`, true);
+      return;
+    }
+    const pw = await ui.askPassword('This track is private and not released yet. Enter its password (or the admin password) to open it.');
+    if (pw === null) return;
+    try {
+      t = await api.getTrack(id, pw);
+      password = pw;
+    } catch (err2) {
+      ui.toast(err2.status === 403 ? 'Wrong password — track not opened.' : `Load failed: ${err2.message}`, true);
+      return;
+    }
   }
+  currentTrackId = t.id;
+  currentPassword = password; // reuse for saving if it's also the edit password
+  currentProtected = !!t.protected;
+  $('track-name').value = t.name;
+  loadTrackData(t.data);
+  const how = t.private ? ' 🚧 (private)' : t.protected ? ' 🔒 (protected — Save As to keep your own copy)' : '';
+  ui.toast(`Loaded "${t.name}"${how}`);
 }
 
 // Delete a track, prompting for a password if it's protected. Returns true
@@ -170,14 +199,52 @@ $('btn-new').addEventListener('click', () => {
 $('btn-save').addEventListener('click', saveTrack);
 $('btn-saveas').addEventListener('click', saveTrackAs);
 
-$('btn-load').addEventListener('click', async () => {
+// Open the Load dialog. `password` (if given) also reveals the private tracks
+// it unlocks — the admin password reveals them all.
+async function openLoadDialog(password = '') {
   try {
-    const tracks = await api.listTracks();
-    ui.openLoadDialog(tracks, { onLoad: loadTrack, onDelete: deleteTrack });
+    const tracks = await api.listTracks(password);
+    ui.openLoadDialog(
+      tracks,
+      {
+        onLoad: (id) => loadTrack(id, password),
+        onDelete: deleteTrack,
+        onUnlock: (pw) => openLoadDialog(pw),
+        onTogglePrivate: (t) => toggleTrackPrivacy(t, password),
+      },
+      password
+    );
   } catch (err) {
     ui.toast(`Could not list tracks: ${err.message}`, true);
   }
-});
+}
+
+// Release an unreleased track (or pull a public one back), then refresh the list.
+async function toggleTrackPrivacy(t, listPassword) {
+  const target = !t.private;
+  let pw = listPassword;
+  try {
+    await api.setTrackPrivacy(t.id, target, pw);
+  } catch (err) {
+    if (err.status !== 403) {
+      ui.toast(err.message, true);
+      return;
+    }
+    const asked = await ui.askPassword(`Enter the password for "${t.name}" (or the admin password) to ${target ? 'make it private' : 'release it'}.`);
+    if (asked === null) return;
+    pw = asked;
+    try {
+      await api.setTrackPrivacy(t.id, target, pw);
+    } catch (err2) {
+      ui.toast(err2.status === 403 ? 'Wrong password — nothing changed.' : err2.message, true);
+      return;
+    }
+  }
+  ui.toast(target ? `"${t.name}" is now private` : `"${t.name}" is now public`);
+  openLoadDialog(listPassword); // refresh the list in place
+}
+
+$('btn-load').addEventListener('click', () => openLoadDialog());
 
 $('btn-share').addEventListener('click', () => {
   if (!currentTrackId) {
