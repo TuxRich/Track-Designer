@@ -77,11 +77,11 @@ export class SceneManager {
     this._pointer = new THREE.Vector2();
 
     this.buildArena();
-    this.resetCamera();
 
     const container = canvas.parentElement;
     new ResizeObserver(() => this._resize()).observe(container);
-    this._resize();
+    this._resize(); // set the camera aspect before framing the arena
+    this.resetCamera();
 
     this.renderer.setAnimationLoop(() => {
       this.controls.update();
@@ -102,11 +102,27 @@ export class SceneManager {
     this.buildArena();
   }
 
+  // Default view looks along +X from beyond the origin corner, which puts the
+  // 0,0 corner at the bottom-left of the screen (like a graph) with the metre
+  // labels running along the bottom and up the left edge.
   resetCamera() {
-    const { w, d } = this.arena;
-    const dist = Math.max(w, d);
-    this.camera.position.set(w / 2, dist * 0.75, d / 2 + dist * 0.9);
-    this.controls.target.set(w / 2, 0, d / 2);
+    const { w, d, h } = this.arena;
+    // View from beyond the 0,0 corner, dominated by -X with a gentle sideways
+    // bias for a 3/4 look. Keeping that bias below d/w guarantees the origin
+    // corner lands left of centre whatever shape the arena is.
+    const sideBias = Math.min(1, d / w) * 0.5;
+    const dir = new THREE.Vector3(-1, 0.75, -sideBias).normalize();
+    // Distance that fits the whole arena in both field-of-view axes, so
+    // nothing is cropped at any arena size or window shape. The radius is
+    // measured from the orbit target (the floor centre) to the furthest
+    // corner, since that is what the camera actually points at.
+    const target = new THREE.Vector3(w / 2, 0, d / 2);
+    const radius = Math.hypot(w / 2, h, d / 2);
+    const vFov = THREE.MathUtils.degToRad(this.camera.fov);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * (this.camera.aspect || 1));
+    const distance = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.05;
+    this.camera.position.copy(target).addScaledVector(dir, distance);
+    this.controls.target.copy(target);
     this.controls.update();
   }
 
