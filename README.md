@@ -6,6 +6,10 @@ them, and screenshot the result so you can build the track in real life.
 
 Backend is Go (stdlib only); frontend is Three.js (vendored, no build step).
 
+Responses are gzip-compressed (a cold load is ~220 KB over the wire rather than
+~1.4 MB), and `web/vendor/` holds the minified Three.js build. A boot overlay
+covers the page until the app has initialised.
+
 ## Run
 
 ```

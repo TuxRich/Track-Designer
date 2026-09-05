@@ -8,12 +8,28 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./vendor/three.module.js"
+    "three": "./vendor/three.module.min.js"
   }
 }
 </script>
 </head>
 <body>
+<!-- Shown immediately while the 3D library and scene load; removed by app.js. -->
+<div id="boot">
+  <div class="boot-box">
+    <div class="boot-spinner"></div>
+    <p id="boot-msg">Loading track designer…</p>
+  </div>
+</div>
+<script>
+  // If the app never boots (e.g. a script failed to load) say so, rather
+  // than spinning forever. Cleared by app.js once it starts.
+  window.bootTimer = setTimeout(function () {
+    var m = document.getElementById('boot-msg');
+    if (m) m.textContent = 'Still loading — check your connection, then refresh.';
+  }, 20000);
+</script>
+
 <header id="toolbar">
   <span id="app-title">FPV Track Designer</span>
   <span id="view-badge" title="You are viewing a shared track — gates are locked">👁 View only</span>

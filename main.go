@@ -82,5 +82,5 @@ func main() {
 	}))
 
 	log.Printf("track designer listening on http://localhost%s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, mux))
+	log.Fatal(http.ListenAndServe(*addr, server.Gzip(mux)))
 }

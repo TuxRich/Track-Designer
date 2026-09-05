@@ -25,6 +25,22 @@ let currentTrackId = null;
 
 const viewTrackId = new URLSearchParams(location.search).get('view');
 
+// Dismiss the boot overlay shown in index.html. Called once the palette is up
+// (or on failure, so it can never leave the app stuck behind a spinner).
+function hideBootOverlay(errorMessage) {
+  clearTimeout(window.bootTimer);
+  const boot = $('boot');
+  if (!boot) return;
+  if (errorMessage) {
+    const msg = $('boot-msg');
+    msg.textContent = errorMessage;
+    msg.classList.add('error');
+    return; // leave it up: without gate types there's nothing to design with
+  }
+  boot.classList.add('done');
+  setTimeout(() => boot.remove(), 300); // after the fade
+}
+
 async function init() {
   try {
     gateDefs = await api.gates();
@@ -32,8 +48,10 @@ async function init() {
     ui.buildPalette(gateDefs);
   } catch (err) {
     ui.toast(`Failed to load gate types: ${err.message}`, true);
+    hideBootOverlay(`Could not load gate types: ${err.message}`);
     return;
   }
+  hideBootOverlay();
   // Banner artwork options for the New-gate form (best-effort).
   ui.bannerImages = await api.banners().catch(() => []);
   if (viewTrackId) enterViewMode(viewTrackId);
