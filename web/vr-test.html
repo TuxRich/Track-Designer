@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VR locomotion — test harness</title>
+<!--
+  Checks the rig maths behind VR mode: where you spawn, and that walking and
+  snap-turning move you where they claim to.
+
+      go run .          (then open http://localhost:8080/vr-test.html)
+
+  What this CANNOT cover is the session itself — requesting it, the reference
+  space, controller axis mapping, and restoring the desktop camera on exit all
+  need a real headset. It covers the geometry, which is the part that fails
+  silently and is miserable to debug with a headset on.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js"
+  }
+}
+</script>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 900px;
+         background: #1e1f22; color: #e8e8e8; }
+  h1 { font-size: 18px; }
+  .ok { color: #4ade80; } .bad { color: #f87171; }
+  .note { color: #9aa0a6; }
+  #stage { width: 320px; height: 200px; opacity: 0.35; }
+  canvas { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+<h1>VR locomotion — test harness</h1>
+<div id="checks">Running…</div>
+<p class="note">Session lifecycle and controller input need a real headset; only the rig geometry is covered here.</p>
+<div id="stage"><canvas id="canvas3d"></canvas></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { SceneManager } from './js/scene.js';
+import { Editor } from './js/editor.js';
+import { VRMode, MOVE_SPEED, SNAP_ANGLE, START_SETBACK, WANDER_MARGIN } from './js/vr.js';
+
+const $ = (id) => document.getElementById(id);
+const results = [];
+const record = (label, fn) => results.push([label, fn]);
+const near = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
+
+try {
+  const fixtures = await (await fetch('./liftoff-test-fixtures.json')).json();
+  const defs = Object.fromEntries(fixtures.gates.map((d) => [d.id, d]));
+  const state = { mode: 'select' };
+  const sceneMgr = new SceneManager($('canvas3d'));
+  const editor = new Editor(sceneMgr, state);
+  const track = fixtures.tracks[0];
+  sceneMgr.setArena(track.data.arena.w, track.data.arena.d, track.data.arena.h);
+  editor.loadFrom(track.data.gates, defs);
+
+  const vr = new VRMode(sceneMgr, editor);
+  // Stand the rig up the way enter() does, without a session.
+  sceneMgr.scene.add(vr.rig);
+  vr.rig.add(sceneMgr.camera);
+
+  // renderer.xr.getCamera() returns its camera whether or not a session is
+  // running, so a head pose can be faked by posing it directly.
+  const head = sceneMgr.renderer.xr.getCamera();
+  const poseHead = (x, y, z, yaw = 0) => {
+    head.position.set(x, y, z);
+    head.quaternion.setFromEuler(new THREE.Euler(0, yaw, 0));
+    head.updateMatrixWorld(true);
+  };
+
+  record('feature detection resolves a boolean, never throws', async () =>
+    typeof (await VRMode.isSupported()) === 'boolean');
+
+  record('not active before a session starts', () => vr.active === false);
+
+  const gate1 = editor.gates.filter((g) => !g.prop)[0].object.position.clone();
+  const gate2 = editor.gates.filter((g) => !g.prop)[1].object.position.clone();
+  vr._placeAtStart();
+  const spawn = vr.rig.position.clone();
+
+  record('spawns on the floor', () => spawn.y === 0);
+
+  record(`spawns ${START_SETBACK} m from gate 1`, () =>
+    near(Math.hypot(spawn.x - gate1.x, spawn.z - gate1.z), START_SETBACK, 1e-4));
+
+  record('spawns behind gate 1, not between it and gate 2', () =>
+    spawn.distanceTo(gate2) > gate1.distanceTo(gate2));
+
+  record('spawns facing gate 1', () => {
+    const forward = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, vr.rig.rotation.y, 0));
+    const toGate = new THREE.Vector3(gate1.x - spawn.x, 0, gate1.z - spawn.z).normalize();
+    return forward.dot(toGate) > 0.999;
+  });
+
+  record('walking follows where the head looks, at the stated speed', () => {
+    vr.rig.position.set(4, 0, 4);
+    vr.rig.rotation.y = 0;
+    vr.rig.updateMatrixWorld(true);
+    const yaw = Math.PI / 2; // head turned to look down -X
+    poseHead(4, 1.6, 4, yaw);
+    const before = vr.rig.position.clone();
+    const dt = 0.1;
+    vr._move(0, -1, dt); // stick pushed forward
+    const delta = vr.rig.position.clone().sub(before);
+    const expected = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, yaw, 0));
+    return near(delta.length(), MOVE_SPEED * dt, 1e-6)
+      && delta.clone().normalize().dot(expected) > 0.999;
+  });
+
+  record('strafing is perpendicular to the walk direction', () => {
+    vr.rig.position.set(4, 0, 4);
+    vr.rig.rotation.y = 0;
+    vr.rig.updateMatrixWorld(true);
+    poseHead(4, 1.6, 4, 0);
+    const before = vr.rig.position.clone();
+    vr._move(1, 0, 0.1); // stick pushed right
+    const delta = vr.rig.position.clone().sub(before);
+    return near(delta.length(), MOVE_SPEED * 0.1, 1e-6) && delta.x > 0 && near(delta.z, 0, 1e-6);
+  });
+
+  record('walking never leaves the arena by more than the wander margin', () => {
+    vr.rig.position.set(0, 0, 0);
+    vr.rig.rotation.y = 0;
+    vr.rig.updateMatrixWorld(true);
+    poseHead(0, 1.6, 0, 0);
+    for (let i = 0; i < 500; i++) vr._move(-1, 1, 0.1); // walk backwards and left, hard
+    const { w, d } = sceneMgr.arena;
+    const p = vr.rig.position;
+    return p.x >= -WANDER_MARGIN - 1e-9 && p.z >= -WANDER_MARGIN - 1e-9
+      && p.x <= w + WANDER_MARGIN + 1e-9 && p.z <= d + WANDER_MARGIN + 1e-9;
+  });
+
+  record('snap turn rotates by exactly one step', () => {
+    vr.rig.position.set(4, 0, 4);
+    vr.rig.rotation.y = 0;
+    vr.rig.updateMatrixWorld(true);
+    poseHead(5, 1.6, 4.5); // head offset from the rig origin, as in real life
+    const before = vr.rig.rotation.y;
+    vr._snapTurn(SNAP_ANGLE);
+    return near(vr.rig.rotation.y - before, SNAP_ANGLE, 1e-9);
+  });
+
+  record('snap turn pivots about the head, so you stay put', () => {
+    vr.rig.position.set(4, 0, 4);
+    vr.rig.rotation.y = 0.3;
+    vr.rig.updateMatrixWorld(true);
+    const headWorld = new THREE.Vector3(5.2, 1.6, 4.7);
+    poseHead(headWorld.x, headWorld.y, headWorld.z);
+
+    // Independent derivation: with headLocal = R⁻¹(head − p), holding the head
+    // still across a rotation R → R′ requires p′ = head − R′·headLocal.
+    const before = vr.rig.position.clone();
+    const rotBefore = vr.rig.rotation.y;
+    const headLocal = headWorld.clone().sub(before)
+      .applyEuler(new THREE.Euler(0, -rotBefore, 0));
+    const expected = headWorld.clone()
+      .sub(headLocal.applyEuler(new THREE.Euler(0, rotBefore + SNAP_ANGLE, 0)));
+
+    vr._snapTurn(SNAP_ANGLE);
+    return near(vr.rig.position.x, expected.x, 1e-6) && near(vr.rig.position.z, expected.z, 1e-6);
+  });
+
+  record('snap turning does not drift you off the floor', () => vr.rig.position.y === 0);
+} catch (err) {
+  record(`harness failed to run: ${err.message}`, () => false);
+  console.error(err);
+}
+
+let failed = 0;
+const lines = [];
+for (const [label, fn] of results) {
+  let pass = false;
+  let note = '';
+  try { pass = !!(await fn()); } catch (e) { note = ` — ${e.message}`; }
+  if (!pass) failed++;
+  lines.push(`<div class="${pass ? 'ok' : 'bad'}">${pass ? '✔' : '✘'} ${label}${note}</div>`);
+}
+$('checks').innerHTML = lines.join('');
+document.title = failed ? `FAIL ${failed}/${results.length}` : `PASS ${results.length}/${results.length}`;
+</script>
+</body>
+</html>

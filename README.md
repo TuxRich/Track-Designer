@@ -99,17 +99,69 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   or delete gates, and cannot save changes. Save the track first so it has an
   id to link to.
 - **📷 Screenshot** — downloads a PNG of the current view.
-- **⬇ Export** — offers two formats:
+- **🥽 VR** — walk the track at 1:1 scale in a headset. See below.
+- **⬇ Export** — offers three formats:
   - **Liftoff race** — a playable [Liftoff](https://store.steampowered.com/app/410340/)
     race, as a zip. See below.
+  - **3D model (glTF / .glb)** — the scene as a single self-contained `.glb`
+    for Blender, Unity, Unreal and VR viewers, at true scale. Floor, grid,
+    arrows, measurements and text panels are each optional. See below.
   - **3D model (USDZ)** — the placed gates as a `.usdz`, which opens natively
     in Quick Look on iPhone, iPad and Mac, so you can stand the track up in AR
     at full scale. Direction arrows are included by default (toggleable); gate
     numbers are not, as they are camera-facing labels with no 3D equivalent.
-    The exporter is loaded on demand, so it costs nothing on page load.
 
-Both run on the in-memory design, so unsaved edits are included — you do not
-have to save first.
+Each runs on the in-memory design, so unsaved edits are included — you do not
+have to save first. Both 3D exporters are loaded on demand, so neither costs
+anything on page load.
+
+## VR
+
+**🥽 VR** puts you inside the track in a headset, at full size. The button only
+appears when a headset is actually available, so it never offers something that
+would just fail — on a Quest, open the track in the headset's own browser.
+
+Nothing is scaled or converted: the designer already works in real metres with
+the floor at zero, so a 10 × 8 m arena is a 10 × 8 m room. A 0.6 m whoop gate is
+0.6 m in front of your face, which is the point — it is much easier to tell
+whether a gap is flyable when you are standing in it.
+
+- **Left stick** walks, in the direction you are looking.
+- **Right stick** snap-turns 30° at a time.
+- **Where you start** — behind gate 1, facing down the track.
+- Leave through the headset's own menu, or press 🥽 again.
+
+Room-scale walking works too, and is the more useful way to judge a gap. Gate
+editing is locked while you are in VR; measurements, numbers and arrows are all
+still drawn. Exiting puts the desktop camera back exactly where it was.
+
+This is a viewing mode, not a simulator — for actually *flying* the track in VR,
+export to Liftoff (below), which has its own headset support.
+
+## Export a 3D model (.glb)
+
+**⬇ Export → 3D model (glTF / .glb)** downloads the track as a glTF binary for
+VR viewers, Blender, Unity or Unreal. Unlike the Liftoff export there is no prop
+catalogue to satisfy, so this is **true 1:1** — one metre in the designer is one
+metre in the file.
+
+GLB rather than OBJ, because an OBJ would arrive incomplete: the chequered start
+line and every text label are textures generated in the browser at runtime, with
+no file on disk to point an MTL at, and OBJ has no PBR materials. A `.glb`
+carries geometry, materials and textures in one self-contained file, and is
+defined in metres, which matches the scene exactly.
+
+The dialog picks what goes in — floor, grid and metre markers, direction arrows,
+measurements, and text. Two things are worth knowing:
+
+- **Gate numbers and distance labels are billboards**, and glTF has no billboard
+  primitive, so they are exported as flat panels aimed at the middle of the
+  arena. Turn "Text as flat panels" off for a clean model with no text at all.
+- **The grid is line geometry.** glTF carries lines, but plenty of VR viewers
+  quietly ignore them, which is why it is off by default.
+
+Gates are named by their track order (`gate3-square-75`), and carry their type id
+in `extras`, so they stay identifiable after import.
 
 ## Export to Liftoff
 
@@ -176,7 +228,8 @@ with the rest of the frontend. Nothing server-side is involved.
 
 `web/liftoff-test.html` is a standalone harness with embedded fixtures and
 self-checks — open it with the server running to exercise the exporter without
-designing anything.
+designing anything. `web/glb-test.html` and `web/vr-test.html` do the same for
+the 3D export and the VR rig maths.
 
 The conversion rules were worked out against Liftoff's file format and a corpus
 of Steam Workshop tracks in a separate project, which keeps a Python
@@ -244,4 +297,12 @@ server/tracks.go   track CRUD, JSON files in data/tracks/
 gates/             gate type definitions (edit these!)
 web/               frontend (vanilla JS modules + vendored Three.js)
 web/js/liftoff/    Liftoff exporter (self-contained, no dependencies)
+web/js/export3d.js glTF/.glb exporter
+web/js/vr.js       WebXR session, camera rig and locomotion
 ```
+
+`web/vendor/` holds Three.js r165 plus four of its official addons
+(`OrbitControls`, `TransformControls`, `GLTFExporter`, `TextureUtils`), copied
+verbatim except for one edit: `GLTFExporter.js` imports `TextureUtils.js` from
+`./` rather than `./../utils/`, because `vendor/` is flat. Re-apply that when
+upgrading.

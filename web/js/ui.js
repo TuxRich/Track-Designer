@@ -236,6 +236,7 @@ export class UI {
     $('liftoff-cancel').addEventListener('click', () => this.closeDialogs());
     $('export-cancel').addEventListener('click', () => this.closeDialogs());
     $('usdz-cancel').addEventListener('click', () => this.closeDialogs());
+    $('glb-cancel').addEventListener('click', () => this.closeDialogs());
     $('btn-help').addEventListener('click', () => this.openDialog('dlg-help'));
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.closeDialogs();
@@ -473,8 +474,9 @@ export class UI {
    * @param {function} onDownload   (scale, poleTrigger) => void
    */
   // Format picker shown by the Export button; each choice opens its own dialog.
-  openExportDialog({ onLiftoff, onUSDZ }) {
+  openExportDialog({ onLiftoff, onGLB, onUSDZ }) {
     $('export-liftoff').onclick = () => onLiftoff();
+    $('export-glb').onclick = () => onGLB();
     $('export-usdz').onclick = () => onUSDZ();
     this.openDialog('dlg-export');
   }
@@ -562,6 +564,48 @@ export class UI {
       this.closeDialogs();
     };
     this.openDialog('dlg-liftoff');
+  }
+
+  // Dialog for the .glb export. `getStats` previews the model for a set of
+  // options; `onExport` does the work and may take a moment, so the button
+  // reports progress rather than appearing to do nothing.
+  openGlbDialog(getStats, onExport) {
+    const ids = {
+      floor: 'glb-floor',
+      grid: 'glb-grid',
+      arrows: 'glb-arrows',
+      measurements: 'glb-measurements',
+      labels: 'glb-labels',
+    };
+    const read = () =>
+      Object.fromEntries(Object.entries(ids).map(([key, id]) => [key, $(id).checked]));
+
+    const refresh = () => {
+      try {
+        const { meshes, triangles } = getStats(read());
+        $('glb-stats').textContent =
+          `${meshes} objects, ${triangles.toLocaleString()} triangles`;
+      } catch (err) {
+        $('glb-stats').textContent = `could not preview: ${err.message}`;
+      }
+    };
+    for (const id of Object.values(ids)) $(id).onchange = refresh;
+    refresh();
+
+    const button = $('glb-download');
+    button.onclick = async () => {
+      const label = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Exporting…';
+      try {
+        await onExport(read());
+        this.closeDialogs();
+      } finally {
+        button.disabled = false;
+        button.textContent = label;
+      }
+    };
+    this.openDialog('dlg-glb');
   }
 
   openShareDialog(url) {

@@ -51,7 +51,8 @@
   </label>
   <button id="btn-arena" title="Set the size of the design space">Arena…</button>
   <button id="btn-screenshot" title="Download a PNG of the current view">📷 Screenshot</button>
-  <button id="btn-export" title="Export this track — Liftoff race or 3D model">⬇ Export</button>
+  <button id="btn-export" title="Export this track — Liftoff race, glTF or USDZ">⬇ Export</button>
+  <button id="btn-vr" class="toggle hidden" title="Walk the track in a VR headset">🥽 VR</button>
   <button id="btn-help" title="Keyboard shortcuts and help">?</button>
 </header>
 
@@ -211,6 +212,8 @@
       <tr><td><kbd>Ctrl+S</kbd></td><td>Save track</td></tr>
       <tr><td>🔒 Passwords</td><td>Save As can set a password. Protected tracks (🔒 in the Load list) can be loaded by anyone, but editing or deleting one needs its password. Use Save As to keep your own copy instead.</td></tr>
       <tr><td>🔗 Share</td><td>Copy a view-only link (recipients can measure but not change gates)</td></tr>
+      <tr><td>🥽 VR</td><td>Walk the track in a headset at 1:1 scale (appears only when a headset is available). Left stick to move, right stick to snap-turn, and the headset's own menu to leave. Gate editing is locked while you are in VR.</td></tr>
+      <tr><td>⬇ Export</td><td>Liftoff race (zip), <code>.glb</code> model for Blender/Unity/Unreal/VR viewers, or <code>.usdz</code> for Quick Look AR on iPhone, iPad and Mac. The 3D formats are real metres, no scaling.</td></tr>
     </table>
     <p class="hint">Measurement clicks on a gate snap to its spot on the floor — the distance you'd tape out when building the track. Shift-click a gate to measure from its opening centre instead. Coordinates are metres from the arena corner.</p>
     <div class="dialog-actions">
@@ -228,8 +231,15 @@
           <small>A playable race for the Liftoff simulator, as a zip.</small>
         </span>
       </button>
-      <button id="export-usdz" class="export-option">
+      <button id="export-glb" class="export-option">
         <span class="export-icon">🧊</span>
+        <span class="export-text">
+          <strong>3D model (glTF / .glb)</strong>
+          <small>For Blender, Unity, Unreal and VR viewers. Carries labels and textures.</small>
+        </span>
+      </button>
+      <button id="export-usdz" class="export-option">
+        <span class="export-icon">📱</span>
         <span class="export-text">
           <strong>3D model (USDZ)</strong>
           <small>Opens in Quick Look on iPhone, iPad and Mac — view the track in AR.</small>
@@ -280,6 +290,33 @@
     <div class="dialog-actions">
       <button id="liftoff-cancel">Cancel</button>
       <button id="liftoff-download" class="primary">Download zip</button>
+    </div>
+  </div>
+
+  <div id="dlg-glb" class="dialog hidden">
+    <h2>Export 3D model (.glb)</h2>
+    <div class="prop-grid">
+      <label>Floor</label>
+      <input id="glb-floor" type="checkbox" checked>
+      <label>Grid &amp; metre markers</label>
+      <input id="glb-grid" type="checkbox"
+             title="Grid lines are line geometry — glTF carries them, but many VR viewers ignore lines">
+      <label>Direction arrows</label>
+      <input id="glb-arrows" type="checkbox" checked>
+      <label>Measurements</label>
+      <input id="glb-measurements" type="checkbox" checked>
+      <label>Text as flat panels</label>
+      <input id="glb-labels" type="checkbox" checked
+             title="Gate numbers and distance labels are billboards, which glTF cannot represent — export them as flat panels instead">
+      <label>Model</label><output id="glb-stats"></output>
+    </div>
+    <p class="hint">Exported at true scale — one metre in the designer is one metre in the file.
+      Gate numbers and distance labels become flat panels facing the middle of the arena, because
+      glTF has no billboard that turns to face you. Textures travel inside the <code>.glb</code>,
+      so it is a single self-contained file.</p>
+    <div class="dialog-actions">
+      <button id="glb-cancel">Cancel</button>
+      <button id="glb-download" class="primary">Download .glb</button>
     </div>
   </div>
 </div>
