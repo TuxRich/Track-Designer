@@ -295,13 +295,19 @@ $('btn-screenshot').addEventListener('click', () => {
   a.click();
 });
 
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  // Revoke once the browser has taken the blob, not before.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 // Export the design as a playable Liftoff race. This runs on the in-memory
 // document, so unsaved edits are included — you do not have to save first.
-$('btn-liftoff').addEventListener('click', () => {
-  if (!editor.gates.length) {
-    ui.toast('Nothing to export — place some gates first.', true);
-    return;
-  }
+function exportLiftoff() {
   const src = {
     id: currentTrackId || 'unsaved',
     name: $('track-name').value.trim() || 'Untitled track',
@@ -317,6 +323,26 @@ $('btn-liftoff').addEventListener('click', () => {
       ui.toast(`Exported ${filename} — extract it over your Liftoff folder`);
     },
   );
+}
+
+// Export the placed gates as a USDZ model for Quick Look / AR. The exporter is
+// loaded on demand so its ~100 KB never lands on the normal page load.
+function exportUSDZModel() {
+  ui.openUSDZDialog(async (includeArrows) => {
+    const { exportUSDZ } = await import('./export/usdz.js');
+    const name = $('track-name').value.trim() || 'track';
+    const { blob, filename, meshes } = await exportUSDZ(editor.gates, { name, includeArrows });
+    saveBlob(blob, filename);
+    ui.toast(`Exported ${filename} (${meshes} parts)`);
+  });
+}
+
+$('btn-export').addEventListener('click', () => {
+  if (!editor.gates.length) {
+    ui.toast('Nothing to export — place some gates first.', true);
+    return;
+  }
+  ui.openExportDialog({ onLiftoff: exportLiftoff, onUSDZ: exportUSDZModel });
 });
 
 $('chk-snap').addEventListener('change', (e) => editor.setSnap(e.target.checked));

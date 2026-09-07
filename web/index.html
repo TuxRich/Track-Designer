@@ -51,7 +51,7 @@
   </label>
   <button id="btn-arena" title="Set the size of the design space">Arena…</button>
   <button id="btn-screenshot" title="Download a PNG of the current view">📷 Screenshot</button>
-  <button id="btn-liftoff" title="Export this track as a playable Liftoff race">🚁 Liftoff</button>
+  <button id="btn-export" title="Export this track — Liftoff race or 3D model">⬇ Export</button>
   <button id="btn-help" title="Keyboard shortcuts and help">?</button>
 </header>
 
@@ -215,6 +215,45 @@
     <p class="hint">Measurement clicks on a gate snap to its spot on the floor — the distance you'd tape out when building the track. Shift-click a gate to measure from its opening centre instead. Coordinates are metres from the arena corner.</p>
     <div class="dialog-actions">
       <button id="help-close">Close</button>
+    </div>
+  </div>
+
+  <div id="dlg-export" class="dialog hidden">
+    <h2>Export track</h2>
+    <div class="export-options">
+      <button id="export-liftoff" class="export-option">
+        <span class="export-icon">🚁</span>
+        <span class="export-text">
+          <strong>Liftoff race</strong>
+          <small>A playable race for the Liftoff simulator, as a zip.</small>
+        </span>
+      </button>
+      <button id="export-usdz" class="export-option">
+        <span class="export-icon">🧊</span>
+        <span class="export-text">
+          <strong>3D model (USDZ)</strong>
+          <small>Opens in Quick Look on iPhone, iPad and Mac — view the track in AR.</small>
+        </span>
+      </button>
+    </div>
+    <div class="dialog-actions">
+      <button id="export-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <div id="dlg-usdz" class="dialog hidden">
+    <h2>Export 3D model (USDZ)</h2>
+    <div class="prop-grid">
+      <label>Direction arrows</label>
+      <input id="usdz-arrows" type="checkbox" checked
+             title="Include the flight-direction arrows as part of the model">
+    </div>
+    <p class="hint">Gate numbers aren't included — they're flat labels that always face
+      the camera, which a 3D model can't represent.</p>
+    <p class="hint" id="usdz-status"></p>
+    <div class="dialog-actions">
+      <button id="usdz-cancel">Cancel</button>
+      <button id="usdz-download" class="primary">Download .usdz</button>
     </div>
   </div>
 

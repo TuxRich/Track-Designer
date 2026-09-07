@@ -99,14 +99,22 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   or delete gates, and cannot save changes. Save the track first so it has an
   id to link to.
 - **📷 Screenshot** — downloads a PNG of the current view.
-- **🚁 Liftoff** — exports the track as a playable [Liftoff](https://store.steampowered.com/app/410340/)
-  race. See below.
+- **⬇ Export** — offers two formats:
+  - **Liftoff race** — a playable [Liftoff](https://store.steampowered.com/app/410340/)
+    race, as a zip. See below.
+  - **3D model (USDZ)** — the placed gates as a `.usdz`, which opens natively
+    in Quick Look on iPhone, iPad and Mac, so you can stand the track up in AR
+    at full scale. Direction arrows are included by default (toggleable); gate
+    numbers are not, as they are camera-facing labels with no 3D equivalent.
+    The exporter is loaded on demand, so it costs nothing on page load.
+
+Both run on the in-memory design, so unsaved edits are included — you do not
+have to save first.
 
 ## Export to Liftoff
 
-**🚁 Liftoff** converts the track you are looking at into a playable Liftoff
-race and downloads it as a zip. It works on the in-memory design, so unsaved
-edits are included — you do not have to save first.
+**⬇ Export → Liftoff race** converts the track you are looking at into a
+playable Liftoff race and downloads it as a zip.
 
 Extract the zip over your Liftoff folder and restart the game:
 

@@ -234,6 +234,8 @@ export class UI {
     $('save-cancel').addEventListener('click', () => this.closeDialogs());
     $('password-cancel').addEventListener('click', () => this.closeDialogs());
     $('liftoff-cancel').addEventListener('click', () => this.closeDialogs());
+    $('export-cancel').addEventListener('click', () => this.closeDialogs());
+    $('usdz-cancel').addEventListener('click', () => this.closeDialogs());
     $('btn-help').addEventListener('click', () => this.openDialog('dlg-help'));
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.closeDialogs();
@@ -470,6 +472,40 @@ export class UI {
    * @param {function} buildPreview (scale, poleTrigger) => convert result
    * @param {function} onDownload   (scale, poleTrigger) => void
    */
+  // Format picker shown by the Export button; each choice opens its own dialog.
+  openExportDialog({ onLiftoff, onUSDZ }) {
+    $('export-liftoff').onclick = () => onLiftoff();
+    $('export-usdz').onclick = () => onUSDZ();
+    this.openDialog('dlg-export');
+  }
+
+  // `onDownload(includeArrows)` should resolve once the file is saved, so the
+  // button can show progress — USDZ conversion of a big track isn't instant.
+  openUSDZDialog(onDownload) {
+    const btn = $('usdz-download');
+    const status = $('usdz-status');
+    status.textContent = '';
+    status.classList.remove('error');
+    btn.disabled = false;
+    btn.textContent = 'Download .usdz';
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = 'Building…';
+      status.classList.remove('error');
+      status.textContent = 'Converting the track to USDZ…';
+      try {
+        await onDownload($('usdz-arrows').checked);
+        this.closeDialogs();
+      } catch (err) {
+        status.textContent = `Export failed: ${err.message}`;
+        status.classList.add('error');
+        btn.disabled = false;
+        btn.textContent = 'Download .usdz';
+      }
+    };
+    this.openDialog('dlg-usdz');
+  }
+
   openLiftoffDialog(buildPreview, onDownload) {
     const scaleSel = $('liftoff-scale');
     const poleInput = $('liftoff-pole');

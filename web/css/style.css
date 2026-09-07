@@ -366,6 +366,26 @@ button.toggle.active { background: var(--accent-2); border-color: var(--accent-2
   margin-top: 14px;
 }
 
+/* Export picker: one big button per output format. */
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 380px;
+}
+.export-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 12px;
+  width: 100%;
+}
+.export-option:hover { border-color: var(--accent); }
+.export-icon { font-size: 22px; flex: none; }
+.export-text { display: flex; flex-direction: column; gap: 2px; }
+.export-text small { color: var(--text-dim); font-size: 12px; }
+
 /* Liftoff export preview: which real prop each designer gate turns into. */
 #dlg-liftoff { max-width: 620px; }
 #liftoff-summary { margin-top: 10px; max-height: 34vh; overflow-y: auto; }
