@@ -114,6 +114,20 @@ try {
   record('arrows on → arrow nodes present', () =>
     countIn(build({ ...ALL_ON, arrows: true }), (o) => o.name === 'arrow') > 0);
 
+  record('a prop exports no arrow, even with arrows on', () => {
+    // A prop — a banner, a table — is not in the flight sequence and has no
+    // direction, so its arrow is hidden in the viewport. The export option
+    // overrides the ➤ toggle; it must not resurrect these too.
+    const withProps = fixtures.tracks.find((t) => t.data.gates.some((g) => g.prop));
+    editor.loadFrom(withProps.data.gates, defs);
+    const props = build({ ...ALL_ON, arrows: true })
+      .getObjectByName('Gates').children.filter((c) => c.userData.prop);
+    const clean = props.length > 0
+      && props.every((c) => countIn(c, (o) => o.name === 'arrow') === 0);
+    editor.loadFrom(track.data.gates, defs); // put the harness track back
+    return clean;
+  });
+
   record('measurements follow their toggle', () => {
     const on = build({ ...ALL_ON, measurements: true }).getObjectByName('Measurements');
     const off = build({ ...ALL_ON, measurements: false }).getObjectByName('Measurements');
