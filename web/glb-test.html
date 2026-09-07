@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GLB export — test harness</title>
+<!--
+  Exercises the .glb exporter against the real SceneManager/Editor/MeasureTool,
+  so it covers the scene-graph pruning that is the whole substance of
+  export3d.js — dropping billboards and invisible pick helpers, and not
+  mutating the live scene on the way past.
+
+      go run .          (then open http://localhost:8080/glb-test.html)
+
+  Fixtures are the same captured designer tracks the Liftoff harness uses.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js"
+  }
+}
+</script>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 900px;
+         background: #1e1f22; color: #e8e8e8; }
+  h1 { font-size: 18px; }
+  select, button { font: inherit; padding: 4px 8px; background: #2b2d31;
+                   color: inherit; border: 1px solid #444; border-radius: 4px; }
+  button.primary { background: #3b82f6; border-color: #3b82f6; }
+  .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .ok { color: #4ade80; } .bad { color: #f87171; }
+  #stage { width: 320px; height: 200px; opacity: 0.35; }
+  canvas { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+<h1>GLB export — test harness</h1>
+
+<div class="row">
+  <select id="track"></select>
+  <button id="go" class="primary">Download .glb</button>
+</div>
+
+<div id="checks">Running…</div>
+<div id="stage"><canvas id="canvas3d"></canvas></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { SceneManager } from './js/scene.js';
+import { Editor } from './js/editor.js';
+import { MeasureTool } from './js/measure.js';
+import { buildExportScene, exportGLB, downloadGLB } from './js/export3d.js';
+
+const $ = (id) => document.getElementById(id);
+const results = [];
+const record = (label, fn) => results.push([label, fn]);
+
+let sceneMgr, editor, measure, defs, fixtures;
+
+function countIn(root, predicate) {
+  let n = 0;
+  root.traverse((o) => { if (predicate(o)) n++; });
+  return n;
+}
+
+const build = (opts) => buildExportScene(sceneMgr, editor, measure, opts);
+const ALL_ON = { floor: true, grid: true, arrows: true, measurements: true, labels: true };
+
+try {
+  fixtures = await (await fetch('./liftoff-test-fixtures.json')).json();
+  defs = Object.fromEntries(fixtures.gates.map((d) => [d.id, d]));
+
+  const state = { mode: 'select' };
+  sceneMgr = new SceneManager($('canvas3d'));
+  editor = new Editor(sceneMgr, state);
+  measure = new MeasureTool(sceneMgr, editor, state);
+
+  fixtures.tracks.forEach((t, i) => {
+    $('track').add(new Option(`${t.name} (${t.data.gates.length} gates)`, String(i)));
+  });
+
+  const track = fixtures.tracks[0];
+  sceneMgr.setArena(track.data.arena.w, track.data.arena.d, track.data.arena.h);
+  editor.loadFrom(track.data.gates, defs);
+  // The fixtures carry no measurements, so add a run to exercise that path.
+  measure.loadFrom([[[1, 0, 1], [3, 0, 2], [5, 0, 4]]]);
+
+  record('gates loaded from the fixture', () => editor.gates.length === track.data.gates.length);
+
+  record('every gate reaches the export', () => {
+    const gates = build(ALL_ON).getObjectByName('Gates');
+    return gates.children.length === editor.gates.length;
+  });
+
+  record('no billboards survive (glTF has none)', () =>
+    countIn(build(ALL_ON), (o) => o.isSprite) === 0);
+
+  record('live scene still has its billboards', () =>
+    countIn(sceneMgr.scene, (o) => o.isSprite) > 0);
+
+  record('invisible pick helpers are dropped', () =>
+    countIn(build(ALL_ON), (o) =>
+      o.name === 'pickFill' || (o.isMesh && o.material?.transparent && o.material.opacity === 0)) === 0);
+
+  record('labels on → flat panels appear', () =>
+    (build({ ...ALL_ON, labels: true }).getObjectByName('Labels')?.children.length ?? 0) > 0);
+
+  record('labels off → none', () =>
+    build({ ...ALL_ON, labels: false }).getObjectByName('Labels') === undefined);
+
+  record('arrows off → no arrow nodes', () =>
+    countIn(build({ ...ALL_ON, arrows: false }), (o) => o.name === 'arrow') === 0);
+
+  record('arrows on → arrow nodes present', () =>
+    countIn(build({ ...ALL_ON, arrows: true }), (o) => o.name === 'arrow') > 0);
+
+  record('measurements follow their toggle', () => {
+    const on = build({ ...ALL_ON, measurements: true }).getObjectByName('Measurements');
+    const off = build({ ...ALL_ON, measurements: false }).getObjectByName('Measurements');
+    return on !== undefined && off === undefined;
+  });
+
+  record('hidden measurements still export when asked', () => {
+    measure.setVisible(false);
+    const m = build(ALL_ON).getObjectByName('Measurements');
+    const allVisible = m && countIn(m, (o) => !o.visible) === 0;
+    measure.setVisible(true);
+    return !!allVisible;
+  });
+
+  record('floor and grid follow their toggles', () => {
+    const none = build({ ...ALL_ON, floor: false, grid: false });
+    const both = build(ALL_ON);
+    return none.getObjectByName('Floor') === undefined
+      && none.getObjectByName('Grid') === undefined
+      && both.getObjectByName('Floor') !== undefined
+      && both.getObjectByName('Grid').children.length > 0;
+  });
+
+  record('selection highlight is not exported, and not clobbered', () => {
+    editor.selectGate(editor.gates[0].object);
+    const lit = countIn(sceneMgr.scene, (o) => o.isMesh && o.material?.emissive
+      && o.material.emissive.getHex() !== 0) > 0;
+    const exported = countIn(build(ALL_ON), (o) => o.isMesh && o.material?.emissive
+      && o.material.emissive.getHex() !== 0);
+    const stillLit = countIn(sceneMgr.scene, (o) => o.isMesh && o.material?.emissive
+      && o.material.emissive.getHex() !== 0) > 0;
+    editor.deselect();
+    return lit && exported === 0 && stillLit;
+  });
+
+  record('exported 1:1 — a 0.75 m gate frame measures 0.85 m', () => {
+    const def = defs['square-75'];
+    const clone = build({ ...ALL_ON, labels: false, arrows: false })
+      .getObjectByName('Gates').children
+      .find((c) => c.name.endsWith('-square-75'));
+    // The gate group also holds the chequered start line, which is wider than
+    // the frame on purpose — measure the frame itself.
+    const frame = clone.getObjectByName('frame');
+    const size = new THREE.Box3().setFromObject(frame).getSize(new THREE.Vector3());
+    window.__frameWidth = size.x;
+    return Math.abs(size.x - (def.innerSize + 2 * def.tubeWidth)) < 0.01;
+  });
+
+  record('the start/finish line is exported with gate 1', () =>
+    countIn(build(ALL_ON), (o) => o.name === 'startLine') === 1);
+
+  const glb = await exportGLB(sceneMgr, editor, measure, ALL_ON);
+  const head = new DataView(await glb.slice(0, 12).arrayBuffer());
+  record('output is a real GLB (magic + version 2)', () =>
+    head.getUint32(0, true) === 0x46546c67 && head.getUint32(4, true) === 2);
+  record('GLB length header matches the blob', () => head.getUint32(8, true) === glb.size);
+  record('textures are embedded (file is not trivially small)', () => glb.size > 20000);
+} catch (err) {
+  record(`harness failed to run: ${err.message}`, () => false);
+  console.error(err);
+}
+
+$('checks').innerHTML = results.map(([label, fn]) => {
+  let pass = false;
+  let note = '';
+  try { pass = !!fn(); } catch (e) { note = ` — ${e.message}`; }
+  return `<div class="${pass ? 'ok' : 'bad'}">${pass ? '✔' : '✘'} ${label}${note}</div>`;
+}).join('');
+
+const failed = results.filter(([, fn]) => { try { return !fn(); } catch { return true; } }).length;
+document.title = failed ? `FAIL ${failed}/${results.length}` : `PASS ${results.length}/${results.length}`;
+
+$('go').addEventListener('click', async () => {
+  const track = fixtures.tracks[+$('track').value];
+  sceneMgr.setArena(track.data.arena.w, track.data.arena.d, track.data.arena.h);
+  editor.loadFrom(track.data.gates, defs);
+  const { filename, bytes } = await downloadGLB(track.name, sceneMgr, editor, measure, ALL_ON);
+  console.log(`exported ${filename} (${bytes} bytes)`);
+});
+</script>
+</body>
+</html>

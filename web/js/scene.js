@@ -52,6 +52,8 @@ export class SceneManager {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // WebXR costs nothing until a session is requested; see vr.js.
+    this.renderer.xr.enabled = true;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x14161b);
@@ -83,8 +85,18 @@ export class SceneManager {
     this._resize(); // set the camera aspect before framing the arena
     this.resetCamera();
 
-    this.renderer.setAnimationLoop(() => {
-      this.controls.update();
+    // Per-frame subscribers (VR locomotion). setAnimationLoop rather than
+    // requestAnimationFrame is also what WebXR requires, so the loop is
+    // already the right shape for an immersive session.
+    this._frameCallbacks = [];
+    let last = 0;
+    this.renderer.setAnimationLoop((time) => {
+      const dt = last ? Math.min(0.1, (time - last) / 1000) : 0;
+      last = time;
+      for (const cb of this._frameCallbacks) cb(dt);
+      // In an XR session the headset owns the camera; OrbitControls would
+      // fight it for control of the same object.
+      if (!this.renderer.xr.isPresenting) this.controls.update();
       this.renderer.render(this.scene, this.camera);
     });
   }
@@ -95,6 +107,16 @@ export class SceneManager {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+  }
+
+  // Register a per-frame callback, invoked with the frame delta in seconds.
+  // Returns an unsubscribe function.
+  onFrame(cb) {
+    this._frameCallbacks.push(cb);
+    return () => {
+      const i = this._frameCallbacks.indexOf(cb);
+      if (i >= 0) this._frameCallbacks.splice(i, 1);
+    };
   }
 
   setArena(w, d, h) {
@@ -151,17 +173,22 @@ export class SceneManager {
     this.floor = ground;
 
     // Grid: minor lines every 0.5 m, major lines every 1 m.
-    g.add(this._gridLines(0.5, 0x2a2f3a, 0.001));
-    g.add(this._gridLines(1, 0x424b5c, 0.002));
+    const minor = this._gridLines(0.5, 0x2a2f3a, 0.001);
+    minor.name = 'gridMinor';
+    const major = this._gridLines(1, 0x424b5c, 0.002);
+    major.name = 'gridMajor';
+    g.add(minor, major);
 
     // Meter number labels along the two edges next to the origin corner.
     for (let x = 0; x <= Math.floor(w); x++) {
       const s = makeTextSprite(String(x), { height: 0.28, color: '#8b93a1' });
+      s.name = 'meterLabel';
       s.position.set(x, 0.02, -0.35);
       g.add(s);
     }
     for (let z = 1; z <= Math.floor(d); z++) {
       const s = makeTextSprite(String(z), { height: 0.28, color: '#8b93a1' });
+      s.name = 'meterLabel';
       s.position.set(-0.35, 0.02, z);
       g.add(s);
     }
@@ -172,6 +199,7 @@ export class SceneManager {
       new THREE.EdgesGeometry(box),
       new THREE.LineBasicMaterial({ color: 0x4a5568 })
     );
+    edges.name = 'arenaEdges';
     edges.position.set(w / 2, h / 2, d / 2);
     g.add(edges);
     box.dispose();
@@ -184,6 +212,7 @@ export class SceneManager {
       depthWrite: false,
     });
     const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+    walls.name = 'arenaWalls';
     walls.position.set(w / 2, h / 2, d / 2);
     g.add(walls);
 

@@ -5,6 +5,8 @@ import { MeasureTool } from './measure.js';
 import { UI } from './ui.js';
 import { downloadLiftoffZip } from './liftoff/export.js';
 import { convert as convertLiftoff } from './liftoff/convert.js';
+import { downloadGLB, exportStats } from './export3d.js';
+import { VRMode } from './vr.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -14,6 +16,7 @@ const sceneMgr = new SceneManager($('canvas3d'));
 const editor = new Editor(sceneMgr, state);
 const measure = new MeasureTool(sceneMgr, editor, state);
 const ui = new UI(editor, measure, sceneMgr, state);
+const vr = new VRMode(sceneMgr, editor);
 
 // Measurement points sit on top of gates (often exactly at a gate's center),
 // so clicks on them take priority over gate selection.
@@ -319,6 +322,46 @@ $('btn-liftoff').addEventListener('click', () => {
   );
 });
 
+// Export the design as a .glb model — real metres, unlike the Liftoff export.
+$('btn-glb').addEventListener('click', () => {
+  if (!editor.gates.length) {
+    ui.toast('Nothing to export — place some gates first.', true);
+    return;
+  }
+  ui.openGlbDialog(
+    (opts) => exportStats(sceneMgr, editor, measure, opts),
+    async (opts) => {
+      const name = $('track-name').value.trim() || 'track';
+      try {
+        const { filename, bytes } = await downloadGLB(name, sceneMgr, editor, measure, opts);
+        ui.toast(`Exported ${filename} (${(bytes / 1e6).toFixed(1)} MB)`);
+      } catch (err) {
+        ui.toast(`Export failed: ${err.message}`, true);
+      }
+    },
+  );
+});
+
+// The VR button stays hidden unless a headset can actually be driven, so it
+// never offers something that would only fail.
+vr.onChange = (active) => $('btn-vr').classList.toggle('active', active);
+VRMode.isSupported().then((supported) => {
+  if (supported) $('btn-vr').classList.remove('hidden');
+});
+
+$('btn-vr').addEventListener('click', async () => {
+  if (!vr.active) {
+    // Placement and measuring are pointer tools with no VR equivalent.
+    ui.setMeasureActive(false);
+    editor.cancelPlacement();
+  }
+  try {
+    await vr.toggle();
+  } catch (err) {
+    ui.toast(`Could not start VR: ${err.message}`, true);
+  }
+});
+
 $('chk-snap').addEventListener('change', (e) => editor.setSnap(e.target.checked));
 
 $('btn-new-gate').addEventListener('click', () => {
@@ -378,4 +421,4 @@ window.addEventListener('keydown', (e) => {
 init();
 
 // Handy for debugging from the browser console.
-window.trackDesigner = { state, sceneMgr, editor, measure };
+window.trackDesigner = { state, sceneMgr, editor, measure, vr };
