@@ -100,7 +100,7 @@ function buildMeasurements(measure) {
   return group;
 }
 
-function prune(clone, opts) {
+function prune(clone, opts, directional) {
   const drop = [];
   clone.traverse((o) => {
     if (o.isSprite || isPickHelper(o)) {
@@ -108,7 +108,10 @@ function prune(clone, opts) {
       return;
     }
     if (o.name === 'arrow') {
-      if (opts.arrows) o.visible = true; // the viewport's ➤ toggle isn't the authority here
+      // The viewport's ➤ toggle isn't the authority here, the export option
+      // is — but a prop is not in the flight sequence and has no direction to
+      // show, so it never carries an arrow whatever the option says.
+      if (opts.arrows && directional) o.visible = true;
       else drop.push(o);
       return;
     }
@@ -153,7 +156,7 @@ export function buildExportScene(sceneMgr, editor, measure, options = {}) {
       ? `prop-${entry.typeId}`
       : `gate${entry.number ?? ''}-${entry.typeId}`;
     clone.visible = true;
-    prune(clone, opts);
+    prune(clone, opts, !entry.prop);
     // Keep just enough for an importer to tell what a mesh actually is.
     clone.userData = { typeId: entry.typeId, prop: !!entry.prop };
     if (!entry.prop && entry.number) clone.userData.gateNumber = entry.number;
