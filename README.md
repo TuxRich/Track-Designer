@@ -26,6 +26,8 @@ Flags:
 | `-gates` | `gates` | Directory of gate type definitions |
 | `-tracks` | `data/tracks` | Directory where saved tracks are stored |
 | `-dev` | off | Serve the frontend from `./web` on disk instead of the copy embedded in the binary (use while editing frontend code) |
+| `-admin-password` | `$TRACK_ADMIN_PASSWORD` | Master password: edit, delete or view any track |
+| `-trust-proxy` | off | Identify clients by `X-Forwarded-For` / `X-Real-IP` when rate-limiting password attempts. **Turn this on behind a reverse proxy** (nginx, Caddy, Cloudflare…), or every visitor shares the proxy's address and one person's guessing throttles everyone. Leave it off otherwise — clients could forge the header to dodge the limit. |
 
 `go build` produces a single self-contained binary — the frontend is embedded.
 Only the `gates/` folder (and a writable tracks directory) needs to ship with it.
@@ -77,6 +79,20 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   minor and 1 m major lines with meter numbers along two edges; coordinates
   are meters from the arena corner.
 - **Save / Load** — tracks are stored server-side as JSON in `data/tracks/`.
+  Files are written atomically (a crash mid-save can't leave a half-written
+  track).
+- **History and undelete** — before a track is overwritten or deleted, the
+  previous version is copied to `data/tracks/.history/<track-id>/`, keeping
+  the last 20 versions per track. To restore one, copy the file you want back
+  to `data/tracks/<track-id>.json`; it keeps its password and privacy.
+- **Deleting** — a password-protected track needs its password (or the admin
+  password). A track **without** a password can only be deleted by the admin —
+  otherwise anyone could list and delete every open track. Open tracks can
+  still be edited and saved by anyone, but each save is backed up as above.
+- **Password attempts are rate-limited** — 20 at once per visitor, then one
+  every two seconds. Browsing never sends a password, so it's never slowed.
+  Password checks also run outside the track store's lock, so someone
+  guessing can't stall other people's loads and saves.
 - **Passwords** — **Save As** creates a new track and can set a password on it.
   Anyone can load a protected track (🔒 in the Load list) and use **Save As**
   to keep their own copy, but overwriting or deleting the original requires its

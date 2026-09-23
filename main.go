@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"track-designer/server"
 )
@@ -22,6 +23,8 @@ func main() {
 	adminPassword := flag.String("admin-password", os.Getenv("TRACK_ADMIN_PASSWORD"),
 		"master password to edit/delete any track (defaults to $TRACK_ADMIN_PASSWORD)")
 	dev := flag.Bool("dev", false, "serve the frontend from ./web on disk instead of the embedded copy")
+	trustProxy := flag.Bool("trust-proxy", false,
+		"identify clients by X-Forwarded-For / X-Real-IP for rate limiting (only behind a reverse proxy you control)")
 	flag.Parse()
 
 	gates, err := server.LoadGates(*gatesDir)
@@ -63,14 +66,20 @@ func main() {
 		}
 	}
 
+	// Requests carrying a track password: 20 at once per client, then one
+	// every two seconds. Ordinary browsing never sends a password, so is never
+	// throttled; this only slows down password guessing.
+	pwLimit := server.NewPasswordLimiter(20, 2*time.Second, *trustProxy)
+	track := func(h http.HandlerFunc) http.HandlerFunc { return noStore(pwLimit.Wrap(h)) }
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/gates", noStore(gates.HandleList))
 	mux.HandleFunc("POST /api/gates", noStore(gates.HandleCreate))
-	mux.HandleFunc("GET /api/tracks", noStore(tracks.HandleList))
+	mux.HandleFunc("GET /api/tracks", track(tracks.HandleList))
 	mux.HandleFunc("POST /api/tracks", noStore(tracks.HandleCreate))
-	mux.HandleFunc("GET /api/tracks/{id}", noStore(tracks.HandleGet))
-	mux.HandleFunc("PUT /api/tracks/{id}", noStore(tracks.HandleUpdate))
-	mux.HandleFunc("DELETE /api/tracks/{id}", noStore(tracks.HandleDelete))
+	mux.HandleFunc("GET /api/tracks/{id}", track(tracks.HandleGet))
+	mux.HandleFunc("PUT /api/tracks/{id}", track(tracks.HandleUpdate))
+	mux.HandleFunc("DELETE /api/tracks/{id}", track(tracks.HandleDelete))
 	mux.HandleFunc("GET /api/banners", noStore(banners.HandleList))
 	mux.Handle("GET /banners/", banners.FileServer())
 	files := http.FileServerFS(static)

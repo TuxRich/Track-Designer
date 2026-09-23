@@ -3,6 +3,24 @@ import { OrbitControls } from '../vendor/OrbitControls.js';
 
 // Creates a billboard sprite showing `text`. `height` is the on-screen size
 // of the text in world meters.
+// Free the GPU memory held by an object and everything under it: geometries,
+// materials, and every texture those materials use. Removing an object from
+// the scene does NOT do this — without it, each loaded or deleted gate leaks.
+//
+// Sprite geometry is skipped on purpose: three.js shares a single geometry
+// between every sprite, so disposing it would force all of them (gate
+// numbers, metre markers, measurement labels) to be uploaded again.
+export function disposeObject(root) {
+  root.traverse((o) => {
+    if (!o.isSprite) o.geometry?.dispose();
+    const materials = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of materials) {
+      for (const value of Object.values(m)) if (value?.isTexture) value.dispose();
+      m.dispose();
+    }
+  });
+}
+
 export function makeTextSprite(text, { height = 0.3, color = '#ffffff', background = null, alwaysOnTop = false } = {}) {
   const fontPx = 64;
   const pad = 16;
@@ -154,10 +172,7 @@ export class SceneManager {
     for (let i = g.children.length - 1; i >= 0; i--) {
       const child = g.children[i];
       g.remove(child);
-      child.traverse?.((o) => {
-        o.geometry?.dispose();
-        if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
-      });
+      disposeObject(child); // also frees the metre-marker label textures
     }
 
     // Ground plane (receives shadows, used for placement raycasts).

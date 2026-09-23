@@ -185,9 +185,11 @@ async function loadTrack(id, password = '') {
 // Delete a track, prompting for a password if it's protected. Returns true
 // when it was actually removed.
 async function deleteTrack(t) {
-  const pw = t.protected
-    ? await ui.askPassword(`"${t.name}" is password-protected. Enter its password (or the admin password) to delete it.`)
-    : '';
+  // A track without a password can only be deleted by the admin — otherwise
+  // anyone could delete every open track. A copy is always kept on the server.
+  const pw = await ui.askPassword(t.protected
+    ? `"${t.name}" is password-protected. Enter its password (or the admin password) to delete it.`
+    : `"${t.name}" has no password, so only the admin can delete it. Enter the admin password.`);
   if (pw === null) return false;
   try {
     await api.deleteTrack(t.id, pw);
@@ -195,7 +197,9 @@ async function deleteTrack(t) {
     ui.toast(`Deleted "${t.name}"`);
     return true;
   } catch (err) {
-    ui.toast(err.status === 403 ? 'Wrong password — track not deleted.' : `Delete failed: ${err.message}`, true);
+    // The server's message says which password it wanted, or asks the user
+    // to slow down after too many attempts.
+    ui.toast(`Not deleted: ${err.message}`, true);
     return false;
   }
 }

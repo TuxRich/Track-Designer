@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -41,6 +42,10 @@ type GateRegistry struct {
 }
 
 // LoadGates reads every *.json file in dir as a GateType.
+//
+// A file that can't be read or parsed is logged and skipped rather than
+// stopping the server: one damaged definition shouldn't take the whole site
+// down, and tracks using the other gate types still work.
 func LoadGates(dir string) (*GateRegistry, error) {
 	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil {
@@ -51,17 +56,21 @@ func LoadGates(dir string) (*GateRegistry, error) {
 	for _, p := range paths {
 		data, err := os.ReadFile(p)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", p, err)
+			log.Printf("skipping gate file %s: %v", p, err)
+			continue
 		}
 		var gt GateType
 		if err := json.Unmarshal(data, &gt); err != nil {
-			return nil, fmt.Errorf("%s: %w", p, err)
+			log.Printf("skipping gate file %s: %v", p, err)
+			continue
 		}
 		if gt.ID == "" || gt.Shape == "" {
-			return nil, fmt.Errorf("%s: gate definition must have id and shape", p)
+			log.Printf("skipping gate file %s: gate definition must have id and shape", p)
+			continue
 		}
 		if prev, dup := seen[gt.ID]; dup {
-			return nil, fmt.Errorf("%s: duplicate gate id %q (already defined in %s)", p, gt.ID, prev)
+			log.Printf("skipping gate file %s: duplicate gate id %q (already defined in %s)", p, gt.ID, prev)
+			continue
 		}
 		seen[gt.ID] = p
 		reg.Types = append(reg.Types, gt)
@@ -121,7 +130,7 @@ func (g *GateRegistry) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := os.WriteFile(filepath.Join(g.dir, gt.ID+".json"), data, 0o644); err != nil {
+	if err := writeFileAtomic(filepath.Join(g.dir, gt.ID+".json"), data); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

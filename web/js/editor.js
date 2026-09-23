@@ -13,7 +13,7 @@ import {
   DEFAULT_ARROW_COLOR,
   colorToCSS,
 } from './gates.js';
-import { makeTextSprite } from './scene.js';
+import { makeTextSprite, disposeObject } from './scene.js';
 
 const SNAP_MOVE = 0.1; // meters
 const SNAP_ROT = THREE.MathUtils.degToRad(15);
@@ -107,6 +107,7 @@ export class Editor {
   cancelPlacement() {
     if (this.ghost) {
       this.group.remove(this.ghost);
+      disposeObject(this.ghost);
       this.ghost = null;
     }
     this.placingDef = null;
@@ -181,10 +182,27 @@ export class Editor {
     this.gates.push(entry);
     this._applyDir(entry, dir);
     this._applyArrowVisibility(entry);
-    this._renumber();
-    this.onGatesChanged();
+    if (!this._batching) {
+      this._renumber();
+      this.onGatesChanged();
+    }
     if (select) this.selectGate(object);
     return entry;
+  }
+
+  // Run fn with per-gate renumbering suspended, then renumber once at the end.
+  // Adding N gates one by one otherwise rebuilds every label N times, which is
+  // quadratic — slow enough to notice on a phone or headset for a big track.
+  _batched(fn) {
+    if (this._batching) return fn(); // already inside a batch
+    this._batching = true;
+    try {
+      return fn();
+    } finally {
+      this._batching = false;
+      this._renumber();
+      this.onGatesChanged();
+    }
   }
 
   _arrowOf(entry) {
@@ -223,6 +241,7 @@ export class Editor {
     this.deselect();
     for (const entry of doomed) {
       this.group.remove(entry.object);
+      disposeObject(entry.object);
       const i = this.gates.indexOf(entry);
       if (i >= 0) this.gates.splice(i, 1);
     }
@@ -232,13 +251,15 @@ export class Editor {
 
   duplicateSelected() {
     if (this.readOnly || !this.selection.length) return;
-    const dups = this.selection.map((s) =>
-      this.placeGate(s.def, s.object.position.x + 0.6, s.object.position.z, {
-        height: this._gateHeight(s),
-        rotY: s.object.rotation.y,
-        dir: s.dir,
-        prop: s.prop,
-      })
+    const dups = this._batched(() =>
+      this.selection.map((s) =>
+        this.placeGate(s.def, s.object.position.x + 0.6, s.object.position.z, {
+          height: this._gateHeight(s),
+          rotY: s.object.rotation.y,
+          dir: s.dir,
+          prop: s.prop,
+        })
+      )
     );
     // Select the new copies as a group.
     this._clearEmissive();
@@ -272,13 +293,7 @@ export class Editor {
 
     if (reselect) this.deselect();
     this.group.remove(o);
-    o.traverse((c) => {
-      c.geometry?.dispose();
-      if (c.material) {
-        c.material.map?.dispose();
-        c.material.dispose();
-      }
-    });
+    disposeObject(o);
 
     const newEntry = { typeId: newDef.id, def: newDef, object, rotY, dir: 'forward', prop };
     this.gates[idx] = newEntry; // same slot keeps its number/order
@@ -313,7 +328,10 @@ export class Editor {
   clearAll() {
     this.deselect();
     this.cancelPlacement();
-    for (const g of this.gates) this.group.remove(g.object);
+    for (const g of this.gates) {
+      this.group.remove(g.object);
+      disposeObject(g.object);
+    }
     this.gates = [];
     this.onGatesChanged();
   }
@@ -363,12 +381,8 @@ export class Editor {
     let n = 0;
     this.gates.forEach((entry) => {
       const old = entry.object.getObjectByName('numberLabel');
-      if (old) {
-        entry.object.remove(old);
-        old.material.map?.dispose();
-        old.material.dispose();
-      }
       if (entry.prop) {
+        if (old) this._removeLabel(entry.object, old);
         entry.number = null;
         return;
       }
@@ -389,18 +403,33 @@ export class Editor {
         this._applyArrowVisibility(entry);
       }
 
-      const label = makeTextSprite(String(n), {
-        height: 0.22,
-        color: stacked ? colorToCSS(color) : '#ffffff',
-        background: 'rgba(20,22,27,0.85)',
-        alwaysOnTop: true,
-      });
-      label.name = 'numberLabel';
+      // A new label means drawing a canvas and uploading a texture, so keep
+      // the existing one unless its text or colour changed — most edits only
+      // move labels up or down.
+      const textColor = stacked ? colorToCSS(color) : '#ffffff';
+      const key = `${n}|${textColor}`;
+      let label = old;
+      if (!label || label.userData.key !== key) {
+        if (old) this._removeLabel(entry.object, old);
+        label = makeTextSprite(String(n), {
+          height: 0.22,
+          color: textColor,
+          background: 'rgba(20,22,27,0.85)',
+          alwaysOnTop: true,
+        });
+        label.name = 'numberLabel';
+        label.userData.key = key;
+        entry.object.add(label);
+      }
       // Resolved above: natural height, lifted only where labels would collide.
       label.position.y = labelY;
-      entry.object.add(label);
     });
     this._updateStartMarker();
+  }
+
+  _removeLabel(object, label) {
+    object.remove(label);
+    disposeObject(label);
   }
 
   // The chequered start/finish line lives under gate number 1 (the first
@@ -618,21 +647,23 @@ export class Editor {
 
   loadFrom(gateList, defsById) {
     this.clearAll();
-    for (const g of gateList || []) {
-      const def = defsById[g.typeId];
-      if (!def) {
-        console.warn(`Track references unknown gate type "${g.typeId}" — skipped`);
-        continue;
+    this._batched(() => {
+      for (const g of gateList || []) {
+        const def = defsById[g.typeId];
+        if (!def) {
+          console.warn(`Track references unknown gate type "${g.typeId}" — skipped`);
+          continue;
+        }
+        // Older tracks saved a boolean `reversed` instead of `dir`, and had no
+        // `prop` field (fall back to the type's default).
+        this.placeGate(def, g.x, g.z, {
+          height: g.height,
+          rotY: g.rotY,
+          dir: g.dir || (g.reversed ? 'back' : 'forward'),
+          prop: g.prop !== undefined ? g.prop : propByDefault(def),
+        });
       }
-      // Older tracks saved a boolean `reversed` instead of `dir`, and had no
-      // `prop` field (fall back to the type's default).
-      this.placeGate(def, g.x, g.z, {
-        height: g.height,
-        rotY: g.rotY,
-        dir: g.dir || (g.reversed ? 'back' : 'forward'),
-        prop: g.prop !== undefined ? g.prop : propByDefault(def),
-      });
-    }
+    });
   }
 }
 
