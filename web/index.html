@@ -51,7 +51,7 @@
   </label>
   <button id="btn-arena" title="Set the size of the design space">Arena…</button>
   <button id="btn-screenshot" title="Download a PNG of the current view">📷 Screenshot</button>
-  <button id="btn-export" title="Export this track — Liftoff race, glTF or USDZ">⬇ Export</button>
+  <button id="btn-export" title="Export this track — Liftoff race, Velocidrone track, glTF or USDZ">⬇ Export</button>
   <button id="btn-vr" class="toggle hidden" title="Walk the track in a VR headset">🥽 VR</button>
   <button id="btn-help" title="Keyboard shortcuts and help">?</button>
 </header>
@@ -231,6 +231,13 @@
           <small>A playable race for the Liftoff simulator, as a zip.</small>
         </span>
       </button>
+      <button id="export-velocidrone" class="export-option">
+        <span class="export-icon">🏟️</span>
+        <span class="export-text">
+          <strong>Velocidrone track</strong>
+          <small>A .trk track set in Velocidrone's Sports Hall, at real size or scaled up.</small>
+        </span>
+      </button>
       <button id="export-glb" class="export-option">
         <span class="export-icon">🧊</span>
         <span class="export-text">
@@ -290,6 +297,32 @@
     <div class="dialog-actions">
       <button id="liftoff-cancel">Cancel</button>
       <button id="liftoff-download" class="primary">Download zip</button>
+    </div>
+  </div>
+
+  <div id="dlg-velocidrone" class="dialog hidden">
+    <h2>Export to Velocidrone</h2>
+    <div class="prop-grid">
+      <label>Scenery</label><output>Sports Hall</output>
+      <label>Scale</label>
+      <select id="vd-scale" title="×1 keeps real sizes, for whoop and micro quads. Scale up to fly it on a 5-inch quad.">
+        <option value="1" selected>×1 — real size, for whoops</option>
+        <option value="1.5">×1.5</option>
+        <option value="2">×2</option>
+        <option value="3">×3</option>
+        <option value="4">×4 — for 5-inch quads</option>
+      </select>
+      <label>Arena becomes</label><output id="vd-arena"></output>
+    </div>
+    <p class="hint" id="vd-warn"></p>
+    <div id="vd-summary"></div>
+    <p class="hint">Put the <code>.trk</code> file in your <strong>Documents</strong> folder, then in Velocidrone open
+      the <strong>Track Editor</strong> and press <strong>Import Track</strong>. Gates become neon micro gates sized
+      to match; cubes become six square gates, one per face; poles become flags; tables, chairs and
+      banners are built from blocks.</p>
+    <div class="dialog-actions">
+      <button id="vd-cancel">Cancel</button>
+      <button id="vd-download" class="primary">Download .trk</button>
     </div>
   </div>
 

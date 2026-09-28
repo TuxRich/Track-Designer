@@ -234,6 +234,7 @@ export class UI {
     $('save-cancel').addEventListener('click', () => this.closeDialogs());
     $('password-cancel').addEventListener('click', () => this.closeDialogs());
     $('liftoff-cancel').addEventListener('click', () => this.closeDialogs());
+    $('vd-cancel').addEventListener('click', () => this.closeDialogs());
     $('export-cancel').addEventListener('click', () => this.closeDialogs());
     $('usdz-cancel').addEventListener('click', () => this.closeDialogs());
     $('glb-cancel').addEventListener('click', () => this.closeDialogs());
@@ -474,8 +475,9 @@ export class UI {
    * @param {function} onDownload   (scale, poleTrigger) => void
    */
   // Format picker shown by the Export button; each choice opens its own dialog.
-  openExportDialog({ onLiftoff, onGLB, onUSDZ }) {
+  openExportDialog({ onLiftoff, onVelocidrone, onGLB, onUSDZ }) {
     $('export-liftoff').onclick = () => onLiftoff();
+    $('export-velocidrone').onclick = () => onVelocidrone();
     $('export-glb').onclick = () => onGLB();
     $('export-usdz').onclick = () => onUSDZ();
     this.openDialog('dlg-export');
@@ -564,6 +566,61 @@ export class UI {
       this.closeDialogs();
     };
     this.openDialog('dlg-liftoff');
+  }
+
+  // `buildPreview(scale)` converts without downloading, so the dialog can say
+  // how big the track becomes and whether it still fits in the hall.
+  openVelocidroneDialog(buildPreview, onDownload) {
+    const scaleSel = $('vd-scale');
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
+    const refresh = () => {
+      let r;
+      try {
+        r = buildPreview(parseFloat(scaleSel.value));
+      } catch (err) {
+        $('vd-warn').textContent = `Could not convert: ${err.message}`;
+        $('vd-summary').innerHTML = '';
+        return;
+      }
+      const [w, d] = r.place.size.map((v) => +v.toFixed(1));
+      $('vd-arena').textContent = `${w} × ${d} m, ${r.gates} gates`;
+
+      const warn = $('vd-warn');
+      const notes = [];
+      if (r.place.tooTall) notes.push(`At this scale the tallest gate or pole goes through the ${r.scene.name} ceiling. Try a smaller scale.`);
+      else if (!r.place.fits) notes.push(`At this scale the arena is bigger than the ${r.scene.name} — parts of the track will be inside the walls. Try a smaller scale.`);
+      if (!r.gates) notes.push('No race gates — everything is marked as a prop, so the track has no start/finish.');
+      if (r.unknown.length) notes.push(`Skipped unrecognised gate types: ${r.unknown.join(', ')}`);
+      warn.textContent = notes.join(' ');
+      warn.classList.toggle('error', !r.place.fits || !r.gates);
+
+      // One row per gate type rather than per gate: a 40-gate track would
+      // otherwise bury the one line worth reading.
+      const rows = new Map();
+      for (const s of r.summary) {
+        const key = `${s.typeId}|${s.role}`;
+        const row = rows.get(key) || { ...s, count: 0 };
+        row.count++;
+        rows.set(key, row);
+      }
+      const body = [...rows.values()].map((s) =>
+        `<tr><td>${esc(s.typeId)}${s.count > 1 ? ` ×${s.count}` : ''}</td><td>${esc(s.role)}</td>
+         <td>${esc(s.vd)}${s.note ? ` <small>(${esc(s.note)})</small>` : ''}</td>
+         <td>${s.size.toFixed(2)} m</td></tr>`).join('');
+      $('vd-summary').innerHTML =
+        `<table class="liftoff-table"><thead><tr><th>Designer</th><th>As</th>
+         <th>Velocidrone</th><th>Size</th></tr></thead><tbody>${body}</tbody></table>`;
+    };
+
+    scaleSel.onchange = refresh;
+    refresh();
+
+    $('vd-download').onclick = () => {
+      onDownload(parseFloat(scaleSel.value));
+      this.closeDialogs();
+    };
+    this.openDialog('dlg-velocidrone');
   }
 
   // Dialog for the .glb export. `getStats` previews the model for a set of

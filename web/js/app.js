@@ -331,6 +331,24 @@ function exportLiftoff() {
   );
 }
 
+// Export the design as a Velocidrone .trk set in the Sports Hall. Like the
+// Liftoff export it works on the in-memory document, unsaved edits included.
+async function exportVelocidrone() {
+  const { buildTrk } = await import('./export/velocidrone.js');
+  const src = {
+    name: $('track-name').value.trim() || 'Untitled track',
+    data: trackData(),
+  };
+  ui.openVelocidroneDialog(
+    (scale) => buildTrk(src, defsById, { scale }),
+    (scale) => {
+      const { text, filename } = buildTrk(src, defsById, { scale });
+      saveBlob(new Blob([text], { type: 'application/octet-stream' }), filename);
+      ui.toast(`Exported ${filename} — move it to Documents, then Track Editor → Import Track`);
+    },
+  );
+}
+
 // Export the placed gates as a USDZ model for Quick Look / AR. The exporter is
 // loaded on demand so its ~100 KB never lands on the normal page load.
 function exportUSDZModel() {
@@ -368,6 +386,7 @@ $('btn-export').addEventListener('click', () => {
   }
   ui.openExportDialog({
     onLiftoff: exportLiftoff,
+    onVelocidrone: exportVelocidrone,
     onGLB: exportGLBModel,
     onUSDZ: exportUSDZModel,
   });

@@ -116,9 +116,11 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
   id to link to.
 - **📷 Screenshot** — downloads a PNG of the current view.
 - **🥽 VR** — walk the track at 1:1 scale in a headset. See below.
-- **⬇ Export** — offers three formats:
+- **⬇ Export** — offers four formats:
   - **Liftoff race** — a playable [Liftoff](https://store.steampowered.com/app/410340/)
     race, as a zip. See below.
+  - **Velocidrone track** — a `.trk` track set in Velocidrone's Sports Hall,
+    at real size or scaled up. See below.
   - **3D model (glTF / .glb)** — the scene as a single self-contained `.glb`
     for Blender, Unity, Unreal and VR viewers, at true scale. Floor, grid,
     arrows, measurements and text panels are each optional. See below.
@@ -128,8 +130,8 @@ Only the `gates/` folder (and a writable tracks directory) needs to ship with it
     numbers are not, as they are camera-facing labels with no 3D equivalent.
 
 Each runs on the in-memory design, so unsaved edits are included — you do not
-have to save first. Both 3D exporters are loaded on demand, so neither costs
-anything on page load.
+have to save first. The 3D and Velocidrone exporters are loaded on demand, so
+none of them costs anything on page load.
 
 ## VR
 
@@ -251,6 +253,43 @@ The conversion rules were worked out against Liftoff's file format and a corpus
 of Steam Workshop tracks in a separate project, which keeps a Python
 implementation and asserts the two produce byte-identical output.
 
+## Export to Velocidrone
+
+**⬇ Export → Velocidrone track** downloads a `.trk` file. Move it to your
+**Documents** folder (Home on Mac/Linux), then in Velocidrone open the
+**Track Editor** and press **Import Track**. The track is set in the
+**Sports Hall** scenery.
+
+- **Scale** — ×1 keeps real sizes, which suits Velocidrone's whoop and micro
+  quads. ×1.5 to ×4 spread the layout and grow the gates to match, up to
+  5-inch sizes. The dialog warns when the scaled track no longer fits the hall
+  (about 23 × 41 m, 10.5 m ceiling) or goes through the ceiling.
+- **Placement** — the arena is centred on the basketball court and turned so
+  its long side runs down the hall's.
+- **Gates** become neon micro gates (square, or circle for hoops and hex
+  gates), sized to the designer gate's outer frame and coloured to its nearest
+  neon colour (red, green, blue, purple).
+- **Cube gates** become six neon square gates, one on each face (the top and
+  bottom lie flat). The pass's entry and exit faces are race gates, in that
+  order, so a `top>left` cube is two gates in Velocidrone and the numbering
+  runs one higher than the designer's after it. The other faces are scenery,
+  and a cube flown through more than once is only built once.
+  **Poles** become BetaFPV flags at the pole's height. Race gates and poles
+  keep their order and the first is start/finish; props are placed as scenery.
+- **Tables, chairs and banners** are built from blocks — a table is a top and
+  four legs, so you can still fly under it. Banner artwork isn't carried over.
+
+`web/js/export/velocidrone.js` holds the conversion and the file format:
+base64 of AES-128-ECB-encrypted text, `<scene id>
+<name>
+<json>`, the same
+format FPVTrackside writes. Positions are centimetres in Unity's left-handed
+space, rotations `(w, x, y, z) × 1000` quaternions, scales percentages. The
+saved rotation and scale *replace* a prefab's own root transform, so each
+prefab's root rotation is folded back in. Prefab sizes and the hall's bounds
+were measured from Velocidrone 1.16's game files. Web Crypto has no ECB mode,
+hence the small AES in `web/js/export/aes128.js`.
+
 ## Adding a gate type
 
 The easy way: click **＋ New gate type** under the palette. The form (with a
@@ -313,6 +352,7 @@ server/tracks.go   track CRUD, JSON files in data/tracks/
 gates/             gate type definitions (edit these!)
 web/               frontend (vanilla JS modules + vendored Three.js)
 web/js/liftoff/    Liftoff exporter (self-contained, no dependencies)
+web/js/export/     USDZ and Velocidrone (.trk) exporters
 web/js/export3d.js glTF/.glb exporter
 web/js/vr.js       WebXR session, camera rig and locomotion
 ```
